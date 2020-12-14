@@ -1,0 +1,30 @@
+<!--
+  this code is in the public domain
+-->
+
+<html>
+<head>
+<title>Sequoia</title>
+<link rel="stylesheet" type="text/css" href="../main.css">
+<script src="Sequoia.js" language="JavaScript"></script>
+<script language="JavaScript">
+// set a random background for the board
+const idx = 1 + Math.floor(Math.random() * 4);
+const style = `canvas { background-image: url('../backgrounds/bg${idx}.jpeg'); }`;
+const css = document.createElement('style');
+css.appendChild(document.createTextNode(style));
+document.getElementsByTagName("head")[0].appendChild(css);
+</script>
+</head>
+<body>
+<center>
+<canvas width="1600" height="1000">Game Board</canvas>
+<script language="JavaScript">
+window.onload = function () {
+  setup_board();
+};
+</script>
+<p><font class="note">All source code and backgrounds are my original work and are in the public domain.</font></p>
+</center>
+</body>
+</html>
