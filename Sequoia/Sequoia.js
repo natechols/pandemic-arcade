@@ -110,10 +110,11 @@ function draw_card_outline(ctx, card, isHighlighted) {
 function draw_card_label(ctx, card) {
   ctx.font = FONT_TOP;
   ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
   ctx.fillStyle = COLORS[card.suit];
   ctx.fillText(`${LABELS[card.value]}${SUITS[card.suit]}`,
                card.x + CORNER_RADIUS,
-               card.y + CORNER_RADIUS + 16);
+               card.y + CORNER_RADIUS + 10);
 };
 
 function draw_card_center(ctx, card) {
