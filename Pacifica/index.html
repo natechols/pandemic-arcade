@@ -9,7 +9,7 @@
 <script src="layouts.js" language="JavaScript"></script>
 <style>
 canvas {
-  background-image: url('../backgrounds/bg0.jpeg');
+  background-image: url('../images/bg0.jpeg');
 }
 </style>
 </head>
@@ -24,7 +24,7 @@ if (urlParams.has("numImages")) {
   numImages = parseInt(urlParams.get("numImages"));
 }
 for (let i = 1; i <= numImages; i++) {
-  document.write(`<img src="images/tiles/tile${i}.jpg" width="0" height="0"/>`);
+  document.write(`<img src="tiles/tile${i}.jpg" width="0" height="0"/>`);
 }
 window.onload = function () {
   const width = window.innerWidth;

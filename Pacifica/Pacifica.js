@@ -27,7 +27,7 @@ function load_tile_images () {
   const images = [];
   for (let i = 1; i <= numImages; i++) {
     const tileImg = new Image();
-    tileImg.src = `images/tiles/tile${i}.jpg`;
+    tileImg.src = `tiles/tile${i}.jpg`;
     images.push(tileImg);
   }
   return images;
