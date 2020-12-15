@@ -10,7 +10,7 @@
 <script language="JavaScript">
 // set a random background for the board
 const idx = 1 + Math.floor(Math.random() * 4);
-const style = `canvas { background-image: url('../backgrounds/bg${idx}.jpeg'); }`;
+const style = `canvas { background-image: url('../images/bg${idx}.jpeg'); }`;
 const css = document.createElement('style');
 css.appendChild(document.createTextNode(style));
 document.getElementsByTagName("head")[0].appendChild(css);

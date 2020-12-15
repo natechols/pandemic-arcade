@@ -2,7 +2,12 @@
 body {
 	background: black;
 	color: yellow;
-	font-family: Gill Sans, Futura, Verdana, Arial, Helvetica, sans-serif;
+	font-family: Gill Sans, Verdana, Arial, Helvetica, sans-serif;
+}
+
+p.header {
+  font-weight: medium;
+  font-size: 24pt;
 }
 
 div.svga {
