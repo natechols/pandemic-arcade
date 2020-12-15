@@ -21,7 +21,16 @@ document.getElementsByTagName("head")[0].appendChild(css);
 <canvas width="1600" height="1000">Game Board</canvas>
 <script language="JavaScript">
 window.onload = function () {
-  setup_board();
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  console.log(`${width}x${height}`);
+  const canvas = document.querySelector("canvas");
+  const canvasWidth = Math.min(width - 50, 1600);
+  const canvasHeight = Math.min(width / 1.6 - 80, 1000);
+  console.log(`${canvasWidth}x${canvasHeight}`);
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  setup_board(canvasWidth);
 };
 </script>
 <p><font class="note">All source code and backgrounds are my original work and are in the public domain.</font></p>

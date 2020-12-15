@@ -4,7 +4,7 @@
   * TODO proper face cards
   */
 
-function setup_board() {
+function setup_board(width) {
 
 const LABELS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const LABEL_POSITIONS = [
@@ -31,28 +31,31 @@ const LABEL_POSITIONS = [
    [0.33, 0.8], [0.66, 0.8]]
 ];
 
+// fonts are calibrated for this
+const WIDTH_REF = 1600;
+const FONT_SCALE = width / 1600;
 const SUITS = ["\u2660", "\u2665", "\u2666", "\u2663"];
 const COLORS = ["#000000", "#ff0000", "#ff0000", "#000000"];
 // this includes padding around the card
-const STACK_WIDTH = 190;
-const TABLEAU_CARD_Y_OFFSET = 30;
-const TABLEAU_Y_START = 400;
-const CARD_HEIGHT = 200;
-const CARD_WIDTH = 150;
+const BOARD_CENTER = width * 0.5;
+const BUFFER = width * 0.0125;
+const STACK_WIDTH = width * 0.11875;
+const TABLEAU_CARD_Y_OFFSET = width * 0.01875;
+const TABLEAU_Y_START = width * 0.25;
+const CARD_HEIGHT = width * 0.125;
+const CARD_WIDTH = width * 0.09375;
 const CARD_THICKNESS = 1;
-const CORNER_RADIUS = 5;
+const CORNER_RADIUS = Math.max(2, width * 0.003125);
 const BORDER_WIDTH = 1;
 const BORDER_WIDTH_SELECTED = 2;
 const BORDER_COLOR = "#000000";
-const FONT_TOP = "20px Gill Sans";
-const FONT_CENTER = "48px Gill Sans";
 const CARD_BG = "#ffffff";
 const CARD_BG_SELECTED = "#c0c0c0";
 const FOUNDATION_EMPTY = "rgba(240, 240, 240, 0.5)";
 const FOUNDATION_SELECTED = "rgba(150, 150, 150, 0.5)";
 const FOUNDATION_BORDER = 'rgba(200, 200, 200, 0.8)';
 const FREE_EMPTY = "rgba(220, 220, 220, 0.2)";
-const TOP_CELL_Y = 100;
+const TOP_CELL_Y = width * 0.0625;
 
 function make_cards() {
   const cards = [];
@@ -108,7 +111,8 @@ function draw_card_outline(ctx, card, isHighlighted) {
 };
 
 function draw_card_label(ctx, card) {
-  ctx.font = FONT_TOP;
+  const pts = Math.floor(14 * FONT_SCALE);
+  ctx.font = `${pts}pt Gill Sans`;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillStyle = COLORS[card.suit];
@@ -122,7 +126,7 @@ function draw_card_center(ctx, card) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   if (card.value < LABEL_POSITIONS.length) {
-    const pts = 36 - (card.value * 2);
+    const pts = Math.floor((36 - (card.value * 2)) * FONT_SCALE);
     ctx.font = `${pts}pt Gill Sans`;
     for (let i = 0; i <= card.value; i++) {
       const xy = LABEL_POSITIONS[card.value][i];
@@ -131,7 +135,8 @@ function draw_card_center(ctx, card) {
                    card.y + 10 + CARD_HEIGHT*xy[1]);
     }
   } else {
-    ctx.font = FONT_CENTER;
+    const pts = Math.floor(48 * FONT_SCALE);
+    ctx.font = `${pts}pt Gill Sans`;
     ctx.fillText(`${LABELS[card.value]} ${SUITS[card.suit]}`,
                  card.x + CARD_WIDTH/2,
                  card.y + CARD_HEIGHT / 2);
@@ -171,9 +176,9 @@ function draw_foundation(ctx, x, y, isHighlighted) {
 
 function get_tableau_x(idx) {
   if (idx >= 4) {
-    return 820 + ((idx - 4) * STACK_WIDTH);
+    return BOARD_CENTER + BUFFER + ((idx - 4) * STACK_WIDTH);
   } else {
-    return 60 + (idx * STACK_WIDTH);
+    return (BUFFER*3) + (idx * STACK_WIDTH);
   }
 };
 
@@ -182,11 +187,11 @@ function get_tableau_y(idx) {
 };
 
 function get_free_cell_x(idx) {
-  return 20 + (idx * STACK_WIDTH);
+  return BUFFER + (idx * STACK_WIDTH);
 };
 
 function get_foundation_x(idx) {
-  return 1620 - ((idx + 1) * STACK_WIDTH);
+  return width + BUFFER - ((idx + 1) * STACK_WIDTH);
 };
 
 function draw_tableaux(ctx, board) {
@@ -389,6 +394,42 @@ function get_target_tableau(board, x, y) {
   return null;
 };
 
+function auto_move(board, card) {
+  for (let i = 0; i < 4; i++) {
+    if (can_add_to_foundation(board.foundations[i], card)) {
+      board.selected_card = card;
+      board.selected_foundation = i;
+      drop_on_foundation(board);
+      redraw_layout(board);
+      return true;
+    }
+  }
+  return false;
+};
+
+function auto_move_cards(board, cards) {
+  if (cards.length > 0) {
+    const topCard = cards[cards.length - 1];
+    return auto_move(board, topCard);
+  }
+  return false;
+};
+
+function auto_complete(board) {
+  while (true) {
+    let nextMove = false;
+    for (let i = 0; i < 8; i++) {
+      nextMove = nextMove || auto_move_cards(board, board.tableau[i]);
+    }
+    for (let i = 0; i < 4; i++) {
+      nextMove = nextMove || auto_move_cards(board, board.free_cells[i]);
+    }
+    if (!nextMove) {
+      break;
+    }
+  }
+};
+
 function on_mouse_down(board, x, y) {
   if (board.complete) {
     reset_board(board);
@@ -405,6 +446,22 @@ function on_mouse_down(board, x, y) {
   draw_board(board);
 };
 
+function on_double_click(board, x, y, autoComplete) {
+  if (board.complete) {
+    reset_board(board);
+  } else if (autoComplete === true) {
+    auto_complete(board);
+  } else {
+    on_mouse_down(board, x, y);
+    if (board.selected_card !== null) {
+      if (!auto_move(board, board.selected_card)) {
+        clear_selection(board);
+        draw_board(board);
+      }
+    }
+  }
+};
+
 function on_mouse_move(board, x, y) {
   if (board.selected_card !== null) {
     board.selected_card.x = x - board.mouseXdelta;
@@ -412,6 +469,14 @@ function on_mouse_move(board, x, y) {
     board.selected_free = get_target_free_cell(board, x, y);
     board.selected_foundation = get_target_foundation(board, x, y);
     board.selected_tableau = get_target_tableau(board, x, y);
+  }
+  draw_board(board);
+};
+
+function redraw_layout(board) {
+  const nc = board.foundations.map((f) => f.length).reduce((a, b) => a + b);
+  if (nc === 52) {
+    board.complete = true;
   }
   draw_board(board);
 };
@@ -427,11 +492,7 @@ function on_mouse_up(board, x, y) {
     } else {
       reset_drag(board);
     }
-    const nc = board.foundations.map((f) => f.length).reduce((a, b) => a + b);
-    if (nc === 52) {
-      board.complete = true;
-    }
-    draw_board(board);
+    redraw_layout(board);
   }
 };
 
@@ -476,10 +537,15 @@ function bind_events(board) {
   function onMouseOut(evt) {
     return on_mouse_out(board);
   };
+  function onDoubleClick(evt) {
+    const autoComplete = evt.getModifierState("Shift");
+    return on_double_click(board, evt.offsetX, evt.offsetY, autoComplete);
+  };
   canvas.addEventListener("mousedown", onMouseDown);
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mouseup", onMouseUp);
   canvas.addEventListener("mouseout", onMouseOut);
+  canvas.addEventListener("dblclick", onDoubleClick);
 };
 
 function deal_cards() {
