@@ -1,0 +1,31 @@
+<!--
+  this code is in the public domain
+-->
+
+<html>
+<head>
+<title>Alcatraz</title>
+<link rel="stylesheet" type="text/css" href="../main.css"/>
+<script src="Alcatraz.js" language="JavaScript"></script>
+<script src="levels.js" language="JavaScript"></script>
+<!--
+https://www.publicdomainpictures.net/en/view-image.php?image=166186&picture=alcatraz-island
+-->
+<style>
+canvas {
+  background-image: url("alcatraz.jpg");
+  cursor: crosshair;
+}
+</style>
+</head>
+<body>
+<center>
+<canvas width="1600" height="1000">Game Arena</canvas>
+<script language="JavaScript">
+window.onload = function () {
+  start_game(get_levels());
+};
+</script>
+</center>
+</body>
+</html>

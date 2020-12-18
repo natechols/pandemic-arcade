@@ -149,9 +149,21 @@ function draw_top_card(ctx, card, isHighlighted) {
   draw_card_center(ctx, card);
 };
 
-function draw_tableau_stacked_card(ctx, card, isHighlighted) {
+function draw_card_fan(ctx, cards, isHighlighted) {
+  for (let i = 0; i < cards.length - 1; i++) {
+    draw_fan_stacked_card(ctx, cards[i], isHighlighted);
+  }
+  const topCard = cards[cards.length - 1];
+  draw_top_card(ctx, topCard, isHighlighted);
+};
+
+function draw_fan_stacked_card(ctx, card, isHighlighted) {
   draw_card_outline(ctx, card, isHighlighted);
   draw_card_label(ctx, card);
+};
+
+function draw_selected_cards(ctx, cards) {
+  draw_card_fan(ctx, cards, true);
 };
 
 function draw_empty_cell(ctx, x, y, isHighlighted) {
@@ -198,17 +210,9 @@ function draw_tableaux(ctx, board) {
   for (let i = 0; i < 8; i++) {
     const cards = board.tableau[i];
     const isHighlighted = board.selected_tableau === i;
-    if (cards.length > 0) {
-      const topCard = cards[cards.length - 1];
-      const offset = topCard.selected ? 2 : 1;
-      for (let i = 0; i < cards.length - offset; i++) {
-        draw_tableau_stacked_card(ctx, cards[i], isHighlighted);
-      }
-      if (!topCard.selected) {
-        draw_top_card(ctx, cards[cards.length - 1], isHighlighted);
-      } else if (cards.length >= 2) {
-        draw_top_card(ctx, cards[cards.length - 2], isHighlighted);
-      }
+    const unselected = cards.filter(c => c.selected === false);
+    if (unselected.length > 0) {
+      draw_card_fan(ctx, unselected, isHighlighted);
     } else {
       const x = get_tableau_x(i);
       draw_empty_cell(ctx, x, TABLEAU_Y_START, isHighlighted);
@@ -220,7 +224,8 @@ function draw_free_cells(ctx, board) {
   for (let i = 0; i < 4; i++) {
     const free_cell = board.free_cells[i];
     if (free_cell.length === 0 ||
-        is_top_card(board.selected_card, free_cell)) {
+        (board.selected_cards.length === 1 &&
+         is_top_card(board.selected_cards[0], free_cell))) {
       const isHighlighted = board.selected_free === i;
       const cellX = get_free_cell_x(i);
       ctx.lineWidth = 4;
@@ -251,8 +256,8 @@ function draw_board(board) {
   draw_tableaux(ctx, board);
   draw_free_cells(ctx, board);
   draw_foundations(ctx, board);
-  if (board.selected_card !== null) {
-    draw_top_card(ctx, board.selected_card);
+  if (board.selected_cards.length > 0) {
+    draw_selected_cards(ctx, board.selected_cards);
   } else if (board.complete === true) {
     ctx.font = "36pt Gill Sans";
     ctx.fillStyle = "#ffff00";
@@ -269,24 +274,29 @@ function is_top_card(card, others) {
   return false;
 };
 
-function remove_selected_card(board) {
-  const card = board.selected_card;
-  for (let i = 0; i < 4; i++) {
-    if (is_top_card(card, board.free_cells[i])) {
-      board.free_cells[i] = [];
+function remove_selected_cards(board) {
+  const cards = board.selected_cards;
+  if (cards.length === 1) { // special handling for free cells
+    for (let i = 0; i < 4; i++) {
+      if (is_top_card(cards[0], board.free_cells[i])) {
+        board.free_cells[i] = [];
+      }
     }
   }
+  const topCard = cards[cards.length - 1];
   for (let i = 0; i < 8; i++) {
-    if (is_top_card(card, board.tableau[i])) {
-      board.tableau[i].pop();
+    if (is_top_card(topCard, board.tableau[i])) {
+      for (let j = 0; j < cards.length; j++) {
+        board.tableau[i].pop();
+      }
     }
   }
 };
 
 function drop_on_foundation(board) {
-  remove_selected_card(board);
+  remove_selected_cards(board);
   const foundation = board.foundations[board.selected_foundation];
-  const card = board.selected_card;
+  const card = board.selected_cards[0];
   foundation.push(card);
   card.x = get_foundation_x(board.selected_foundation);
   card.y = TOP_CELL_Y;
@@ -294,26 +304,28 @@ function drop_on_foundation(board) {
 };
 
 function drop_on_free(board) {
-  remove_selected_card(board);
-  board.free_cells[board.selected_free] = [board.selected_card];
-  board.selected_card.x = get_free_cell_x(board.selected_free);
-  board.selected_card.y = TOP_CELL_Y;
+  remove_selected_cards(board);
+  board.free_cells[board.selected_free] = [board.selected_cards[0]];
+  board.selected_cards[0].x = get_free_cell_x(board.selected_free);
+  board.selected_cards[0].y = TOP_CELL_Y;
   clear_selection(board);
 };
 
 function drop_on_tableau(board) {
-  remove_selected_card(board);
+  remove_selected_cards(board);
   const tableau = board.tableau[board.selected_tableau];
-  const card = board.selected_card;
-  card.x = get_tableau_x(board.selected_tableau);
-  card.y = get_tableau_y(tableau.length); 
-  tableau.push(card);
+  board.selected_cards.forEach(function (card) {
+    card.x = get_tableau_x(board.selected_tableau);
+    card.y = get_tableau_y(tableau.length); 
+    tableau.push(card);
+  });
   clear_selection(board);
 };
 
-function is_in_bounds(cardX, cardY, x, y) {
+function is_in_bounds(cardX, cardY, x, y, visibleHight) {
+  const height = (visibleHight === undefined) ? CARD_HEIGHT: visibleHight;
   return ((x > cardX && x < cardX + CARD_WIDTH) &&
-          (y > cardY && y < cardY + CARD_HEIGHT));
+          (y > cardY && y < cardY + height));
 };
 
 function is_in_tableau_bounds(tabX, tabY, nCards, x, y) {
@@ -321,27 +333,66 @@ function is_in_tableau_bounds(tabX, tabY, nCards, x, y) {
   return ((x > tabX && x < tabX + CARD_WIDTH) && (y > tabY && y < yMax));
 };
 
-function select_card(board, card, mouseX, mouseY) {
-  card.selected = true;
-  card.oldX = card.x;
-  card.oldY = card.y;
-  board.selected_card = card;
-  board.mouseXdelta = mouseX - card.x;
-  board.mouseYdelta = mouseY - card.y;
+function select_cards(board, cards, mouseX, mouseY) {
+  cards.forEach((card) => {
+    card.selected = true;
+    card.oldX = card.x;
+    card.oldY = card.y;
+  });
+  board.selected_cards = cards;
+  board.mouseXstart = mouseX;
+  board.mouseYstart = mouseY;
 };
 
 function try_select_top_card(board, cards, x, y) {
   if (cards.length > 0) {
     const topCard = cards[cards.length - 1];
     if (is_in_bounds(topCard.x, topCard.y, x, y)) {
-      select_card(board, topCard, x, y);
+      select_cards(board, [topCard], x, y);
+    }
+  }
+};
+
+function is_tableau_series(currentCard, nextCard) {
+  return (COLORS[currentCard.suit] != COLORS[nextCard.suit] &&
+          currentCard.value === nextCard.value - 1);
+};
+
+// FIXME way too complex
+function try_select_tableau_cards(board, cards, x, y, nFree) {
+  const topCard = cards[cards.length - 1];
+  const sequentialCards = [topCard];
+  if (is_in_bounds(topCard.x, topCard.y, x, y)) {
+    return select_cards(board, [topCard], x, y);
+  } else if (cards.length > 1 && nFree >= 1) {
+    // you can select up to nFree cards if they are ordered correctly
+    let currentCard = topCard;
+    for (let i = cards.length - 2; i >= 0 && sequentialCards.length <= nFree; i--) {
+      if (is_tableau_series(currentCard, cards[i])) {
+        sequentialCards.push(cards[i]);
+      } else {
+        break;
+      }
+      currentCard = cards[i];
+    }
+    // find the first card that was actually clicked
+    let firstSelected = null;
+    for (let i = 0; i < sequentialCards.length; i++) {
+      const currentCard = sequentialCards[i];
+      if (is_in_bounds(currentCard.x, currentCard.y, x, y, TABLEAU_CARD_Y_OFFSET)) {
+        firstSelected = i;
+      }
+    }
+    if (firstSelected !== null) {
+      const selectedCards = sequentialCards.slice(0, firstSelected + 1).reverse();
+      select_cards(board, selectedCards, x, y);
     }
   }
 };
 
 function get_target_free_cell(board, x, y) {
   for (let i = 0; i < 4; i++) {
-    if (board.free_cells[i].length === 0) {
+    if (board.free_cells[i].length === 0 && board.selected_cards.length <= 1) {
       const cellX = get_free_cell_x(i);
       if (is_in_bounds(cellX, TOP_CELL_Y, x, y)) {
         return i;
@@ -362,34 +413,45 @@ function can_add_to_foundation(foundation, card) {
 };
 
 function get_target_foundation(board, x, y) {
-  for (let i = 0; i < 4; i++) {
-    const cellX = get_foundation_x(i);
-    if (is_in_bounds(cellX, TOP_CELL_Y, x, y) &&
-        can_add_to_foundation(board.foundations[i], board.selected_card)) {
+  if (board.selected_cards.length === 1) {
+    for (let i = 0; i < 4; i++) {
+      const cellX = get_foundation_x(i);
+      if (is_in_bounds(cellX, TOP_CELL_Y, x, y) &&
+         can_add_to_foundation(board.foundations[i], board.selected_cards[0])) {
+        return i;
+      }
+    }
+  }
+  return null;
+};
+
+function can_add_to_tableau(tableau, cards, nFree) {
+  if (tableau.length === 0) {
+    // can't drag to a tableau while also using it as a free cell
+    return (cards.length <= nFree);
+  } else {
+    const topCard = tableau[tableau.length - 1];
+    return is_tableau_series(cards[0], topCard);
+  }
+};
+
+function get_mouseover_tableau(board, x, y) {
+  for (let i = 0; i < 8; i++) {
+    const cellX = get_tableau_x(i);
+    const cellY = TABLEAU_Y_START;
+    if (is_in_tableau_bounds(cellX, cellY, board.tableau[i].length, x, y)) {
       return i;
     }
   }
   return null;
 };
 
-function can_add_to_tableau(tableau, card) {
-  if (tableau.length === 0) {
-    return true;
-  } else {
-    const topCard = tableau[tableau.length - 1];
-    return (COLORS[card.suit] != COLORS[topCard.suit] &&
-            card.value === topCard.value - 1);
-  }
-};
-
 function get_target_tableau(board, x, y) {
-  for (let i = 0; i < 8; i++) {
-    const cellX = get_tableau_x(i);
-    const cellY = TABLEAU_Y_START;
-    if (is_in_tableau_bounds(cellX, cellY, board.tableau[i].length, x, y) &&
-        can_add_to_tableau(board.tableau[i], board.selected_card)) {
-      return i;
-    }
+  const tableauIdx = get_mouseover_tableau(board, x, y);
+  const nFree = get_n_free_cells(board);
+  if (tableauIdx !== null &&
+      can_add_to_tableau(board.tableau[tableauIdx], board.selected_cards, nFree)) {
+    return tableauIdx;
   }
   return null;
 };
@@ -397,7 +459,7 @@ function get_target_tableau(board, x, y) {
 function auto_move(board, card) {
   for (let i = 0; i < 4; i++) {
     if (can_add_to_foundation(board.foundations[i], card)) {
-      board.selected_card = card;
+      board.selected_cards = [card];
       board.selected_foundation = i;
       drop_on_foundation(board);
       redraw_layout(board);
@@ -430,14 +492,21 @@ function auto_complete(board) {
   }
 };
 
+function get_n_free_cells(board) {
+  return (board.free_cells.filter(c => c.length === 0).length +
+          board.tableau.filter(c => c.length === 0).length);
+};
+
 function on_mouse_down(board, x, y) {
   if (board.complete) {
     reset_board(board);
   } else {
-    board.tableau.forEach(function (cards) {
-      try_select_top_card(board, cards, x, y);
-    });
-    if (board.selected_card === null) {
+    const tableauIdx = get_mouseover_tableau(board, x, y);
+    if (tableauIdx !== null) {
+      const nFree = get_n_free_cells(board);
+      try_select_tableau_cards(board, board.tableau[tableauIdx], x, y, nFree);
+    }
+    if (board.selected_cards.length === 0) {
       board.free_cells.forEach(function (cards) {
         try_select_top_card(board, cards, x, y);
       });
@@ -453,8 +522,8 @@ function on_double_click(board, x, y, autoComplete) {
     auto_complete(board);
   } else {
     on_mouse_down(board, x, y);
-    if (board.selected_card !== null) {
-      if (!auto_move(board, board.selected_card)) {
+    if (board.selected_cards.length === 1) {
+      if (!auto_move(board, board.selected_cards[0])) {
         clear_selection(board);
         draw_board(board);
       }
@@ -463,9 +532,11 @@ function on_double_click(board, x, y, autoComplete) {
 };
 
 function on_mouse_move(board, x, y) {
-  if (board.selected_card !== null) {
-    board.selected_card.x = x - board.mouseXdelta;
-    board.selected_card.y = y - board.mouseYdelta;
+  if (board.selected_cards.length > 0) {
+    board.selected_cards.forEach(function (card) {
+      card.x = card.oldX + (x - board.mouseXstart);
+      card.y = card.oldY + (y - board.mouseYstart);
+    });
     board.selected_free = get_target_free_cell(board, x, y);
     board.selected_foundation = get_target_foundation(board, x, y);
     board.selected_tableau = get_target_tableau(board, x, y);
@@ -482,7 +553,7 @@ function redraw_layout(board) {
 };
 
 function on_mouse_up(board, x, y) {
-  if (board.selected_card !== null) {
+  if (board.selected_cards.length > 0) {
     if (board.selected_free !== null) {
       drop_on_free(board);
     } else if (board.selected_foundation !== null) {
@@ -497,27 +568,26 @@ function on_mouse_up(board, x, y) {
 };
 
 function on_mouse_out(board) {
-  if (board.selected_card !== null) {
+  if (board.selected_cards.length > 0) {
     reset_drag(board);
     draw_board(board);
   }
 };
 
 function clear_selection(board) {
-  if (board.selected_card !== null) {
-    board.selected_card.selected = false;
-  }
-  board.selected_card = null;
+  board.selected_cards.forEach((card) => card.selected = false);
+  board.selected_cards = [];
   board.selected_free = null;
   board.selected_tableau = null;
   board.selected_foundation = null;
 };
 
 function reset_drag(board) {
-  const card = board.selected_card;
-  card.selected = false;
-  card.x = card.oldX;
-  card.y = card.oldY;
+  board.selected_cards.forEach((card) => {
+    card.selected = false;
+    card.x = card.oldX;
+    card.y = card.oldY;
+  });
   clear_selection(board);
 };
 
@@ -573,11 +643,13 @@ const gameBoard = {
   "tableau": null,
   "foundations": null,
   "free_cells": null,
-  "selected_card": null,
+  "selected_cards": [],
   "selected_foundation": null,
   "selected_tableau": null,
   "selected_free": null,
-  "complete": null
+  "complete": null,
+  "mouseXstart": null,
+  "mouseYstart": null
 }
 reset_board(gameBoard);
 bind_events(gameBoard);
