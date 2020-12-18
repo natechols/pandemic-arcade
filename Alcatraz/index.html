@@ -7,37 +7,23 @@
 <title>Alcatraz</title>
 <link rel="stylesheet" type="text/css" href="../main.css"/>
 <script src="Alcatraz.js" language="JavaScript"></script>
+<script src="levels.js" language="JavaScript"></script>
 <!--
 https://www.publicdomainpictures.net/en/view-image.php?image=166186&picture=alcatraz-island
 -->
 <style>
 canvas {
   background-image: url("alcatraz.jpg");
+  cursor: crosshair;
 }
 </style>
 </head>
 <body>
 <center>
-<canvas width="1600" height="900" style="cursor: none;">Game Arena</canvas>
+<canvas width="1600" height="1000">Game Arena</canvas>
 <script language="JavaScript">
-function make_bricks() {
-  const width = 100;
-  const height = 50;
-  const bricks = [];
-  for (let i = 0; i < 14; i++) {
-    for (let j = 0; j < 7; j++) {
-      bricks.push([100 + (i*width), 800 - (j*height), width, height]);
-    }
-  }
-  return bricks;
-};
 window.onload = function () {
-  const level = {
-    "paddle_width": 0.4,
-    "bricks": make_bricks(),
-    "ball_radius": 0.008
-  }
-  start_game(level);
+  start_game(get_levels());
 };
 </script>
 </center>

@@ -5,20 +5,20 @@
   *   2020-12-16 playable single-level version
   */
 
-function start_game(level) {
-const TIMER_INTERVAL = 2; // yes this works!
-const MAX_VELOCITY = 4; // calibrated to timer
-const INITIAL_VELOCITY = 1;
+function start_game(levels) {
+const TIMER_INTERVAL = 4; // yes this works!
+const MAX_VELOCITY = 6; // calibrated to timer
+const INITIAL_VELOCITY = 2;
 const BORDER = 10;
-const BOTTOM = 40;
+const BOTTOM = 100;
 const BRICK_BORDER = 2;
 const WIDTH = 1600;
-const HEIGHT = 900;
+const MIDPOINT = 800;
+const HEIGHT = 1000;
 const PADDLE_RAISE = 10;
 const PADDLE_HEIGHT = 5;
 const PADDLE_COLOR = "#ffffff";
 const BALL_COLOR = "#e0e0e0";
-const BRICK_COLORS = ["#a0a0ff", "#ffa0a0", "#a0ffa0", "#ffa0ff"];
 const PADDLE_BOTTOM = BOTTOM + PADDLE_RAISE;
 const MAX_X = WIDTH - BORDER;
 const MIN_X = BORDER;
@@ -36,17 +36,33 @@ const BOTTOM_ZONE = [[BORDER, BOTTOM], [WIDTH - BORDER, BOTTOM]];
 const BOTTOM_COLOR = "#ff0000";
 
 function draw_bricks(ctx, state) {
+  const level = state.level;
+  ctx.lineWidth = 1;
   for (let i = 0; i < level.bricks.length; i++) {
-    if (state.bricks[i] === true) {
+    const is_solid = state.bricks[i] === true;
+    const is_hit = state.brick_lifetimes[i] > 0;
+    if (is_solid || is_hit) {
       const brick = level.bricks[i];
       ctx.beginPath();
-      ctx.fillStyle = state.brick_colors[i];
+      if (is_solid) {
+        ctx.fillStyle = level.brick_colors[i];
+      } else {
+        ctx.strokeStyle = level.brick_colors[i];
+      }
+      //console.log(level.brick_colors[i]);
       const x = brick[0] + BRICK_BORDER;
       const y = brick[1] + BRICK_BORDER;
       const w = brick[2] - BRICK_BORDER*2;
       const h = brick[3] - BRICK_BORDER*2;
-      ctx.fillRect(x, y, w, h); //brick[0], brick[1], brick[2], brick[3]);
+      if (is_solid) {
+        ctx.fillRect(x, y, w, h); //brick[0], brick[1], brick[2], brick[3]);
+      } else {
+        ctx.strokeRect(x, y, w, h);
+      }
       ctx.stroke();
+      if (is_hit) {
+        state.brick_lifetimes[i]--;
+      }
     }
   }
 };
@@ -65,7 +81,7 @@ function draw_edges(ctx) {
 
 function draw_bottom(ctx) {
   ctx.strokeStyle = BOTTOM_COLOR;
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(BOTTOM_ZONE[0][0], BOTTOM_ZONE[0][1]);
   ctx.lineTo(BOTTOM_ZONE[1][0], BOTTOM_ZONE[1][1]);
@@ -83,72 +99,72 @@ function draw_paddle(ctx, paddle_x, paddle_width) {
   ctx.stroke();
 };
 
-function draw_ball(ctx, x, y) {
+function draw_ball(ctx, x, y, ballRadius) {
   ctx.beginPath();
-  const radius = level.ball_radius * WIDTH;
-  const grd = ctx.createRadialGradient(x, y, 1, x, y, radius);
+  const grd = ctx.createRadialGradient(x, y, 1, x, y, ballRadius);
   grd.addColorStop(0, "#c0ff80");
   grd.addColorStop(1, "#60ff80");
   ctx.fillStyle = grd; //BALL_COLOR;
-  ctx.arc(x, y, radius, 0, Math.PI*2);
+  ctx.arc(x, y, ballRadius, 0, Math.PI*2);
   ctx.fill();
 };
 
-function draw_arena(state) {
+// this takes place in a transform that inverts the Y-axis
+function draw_arena(ctx, state) {
+  draw_bottom(ctx);
+  draw_edges(ctx);
+  draw_paddle(ctx, state.paddle_x, state.level.paddle_width);
+  draw_ball(ctx, state.ball_x, state.ball_y, state.level.ball_radius);
+  draw_bricks(ctx, state);
+  ctx.restore();
+};
+
+function draw(game, gameOver) {
   const canvas = document.querySelector("canvas");
   const ctx = canvas.getContext("2d");
-  ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
   ctx.translate(0, canvas.height);
   ctx.scale(1, -1);
   ctx.lineCap = "square";
-  draw_edges(ctx);
-  draw_bottom(ctx);
-  draw_paddle(ctx, state.paddle_x, level.paddle_width);
-  draw_ball(ctx, state.ball_x, state.ball_y);
-  draw_bricks(ctx, state);
+  draw_arena(ctx, game.state, game.paused, gameOver);
   ctx.restore();
-  if (state.paused) {
+  const textY = HEIGHT - 60;
+  if (gameOver === true) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ff0000";
+    ctx.beginPath();
+    ctx.font = "20pt Monaco";
+    ctx.fillText("GAME OVER", WIDTH / 2, textY);
+    ctx.stroke();
+  } else if (game.paused === true || game.ready === true) {
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffff00";
     ctx.beginPath();
-    ctx.font = "36pt Gill Sans";
-    ctx.fillText("PAUSED", WIDTH / 2, HEIGHT / 2);
+    ctx.font = "20pt Monaco";
+    const gameText = (game.paused === true) ? "PAUSED" : "READY - press Space to resume";
+    ctx.fillText(gameText, WIDTH / 2, textY);
     ctx.stroke();
   }
-};
-
-function create_state() {
-  return {
-    "bricks": null,
-    "brick_colors": null,
-    "paddle_x": WIDTH / 2,
-    "paddle_dx": 0,
-    "ball_x": null,
-    "ball_y": null,
-    "ball_vector_x": null,
-    "ball_vector_y": null,
-    "paused": false,
-    "failed": false
-  }
-};
-
-function initialize_state(state) {
-  state.bricks = level.bricks.map((b) => true);
-  state.brick_colors = level.bricks.map((b) => BRICK_COLORS[Math.floor(Math.random() * 4)]);
-  state.paddle_x = WIDTH / 2;
-  state.ball_x = state.paddle_x; //BORDER + 2 * level.ball_radius * WIDTH;
-  state.ball_y = 300; //HEIGHT / 2;
-  const theta = -(Math.PI / 2) + (Math.PI/8 - Math.random()*(Math.PI / 4));
-  state.ball_vector_x = INITIAL_VELOCITY * Math.cos(theta);
-  state.ball_vector_y = INITIAL_VELOCITY * Math.sin(theta);
-  state.paused = false;
-  state.failed = false;
-  return state;
+  //ctx.textBaseline
+  ctx.fillStyle = "#60ff60";
+  ctx.font = "16pt Monaco";
+  ctx.beginPath();
+  ctx.textAlign = "left";
+  const totalScore = game.score + game.state.current_score;
+  const maxScore = Math.max(game.maxScore, totalScore);
+  ctx.fillText(`Score: ${totalScore}  High Score: ${maxScore}`,
+               BORDER, textY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.textAlign = "right";
+  const levelId = game.level_id + 1;
+  ctx.fillText(`Level: ${levelId}  Balls: ${game.balls}`,
+               WIDTH - BORDER, textY);
 };
 
 function get_paddle_edges(state) {
-  const half_width = (level.paddle_width * (WIDTH - BORDER*2)) / 2;
+  const half_width = (state.level.paddle_width * (WIDTH - BORDER*2)) / 2;
   const x1 = state.paddle_x - half_width;
   const x2 = state.paddle_x + half_width;
   const y1 = PADDLE_BOTTOM - PADDLE_HEIGHT;
@@ -184,7 +200,7 @@ function get_velocity(state) {
 };
 
 function is_in_range(state, edge) {
-  const radius = level.ball_radius * WIDTH;
+  const radius = state.level.ball_radius;
   const velocity = get_velocity(state);
   const x1 = edge[0][0];
   const x2 = edge[1][0];
@@ -200,7 +216,7 @@ function get_slope_angle(xy1, xy2) {
 
 // FIXME this is horrific
 function get_intersection(state, edge) {
-  const radius = level.ball_radius * WIDTH;
+  const radius = state.level.ball_radius;
   const xy1 = [state.ball_x, state.ball_y];
   const xy2 = [state.ball_x + state.ball_vector_x,
                state.ball_y + state.ball_vector_y];
@@ -258,7 +274,10 @@ function compute_bounce_vector(state, edge, intersect, velocity) {
   const vlen = get_vector_length(state.ball_vector_x, state.ball_vector_y);
   let dx = Math.cos(new_theta) * vlen;
   let dy = Math.sin(new_theta) * vlen;
+  // FIXME this needs to be angle-constrained, instead of letting the ball
+  // completely reverse course
   if (velocity !== undefined) {
+    console.log(dx, velocity);
     dx += velocity;
   }
   dx = Math.min(dx, MAX_VELOCITY);
@@ -269,7 +288,7 @@ function compute_bounce_vector(state, edge, intersect, velocity) {
   console.log("vec:", state.ball_vector_x, state.ball_vector_y);
 };
 
-function process_edge(state, edge, velocity) {
+function detect_edge_collision(state, edge, velocity) {
   if (is_in_range(state, edge)) {
     const xy = get_intersection(state, edge);
     if (xy != null) {
@@ -279,12 +298,17 @@ function process_edge(state, edge, velocity) {
   }
 };
 
-function process_brick(state, brick_idx) {
-  const brick = level.bricks[brick_idx];
+function detect_brick_collision(state, brick_idx) {
+  const brick = state.level.bricks[brick_idx];
   const x1 = brick[0];
   const y1 = brick[1];
   const x2 = x1 + brick[2];
   const y2 = y1 + brick[3];
+  // crude optimization
+  if (state.ball_x < x1 - 50 || state.ball_x > x2 + 50 ||
+      state.ball_y < y1 - 50 || state.ball_y > y2 + 50) {
+    return false;
+  }
   const edges = [
     [[x1, y1], [x2, y1]],
     [[x1, y2], [x2, y2]],
@@ -292,32 +316,49 @@ function process_brick(state, brick_idx) {
     [[x2, y1], [x2, y2]]
   ];
   for (let i = 0; i < edges.length; i++) {
-    if (process_edge(state, edges[i])) {
-      console.log("POP:", brick_idx);
-      state.bricks[brick_idx] = false;
+    if (detect_edge_collision(state, edges[i])) {
+      return true;
     }
   }
+  return false;
+};
+
+function collect_brick(state, brick_idx) {
+  console.log("POP:", brick_idx);
+  state.bricks[brick_idx] = false;
+  state.brick_lifetimes[brick_idx] = 20;
+  state.current_score += state.current_run + 1;
+  state.current_run++;
+  state.bricks_remaining--;
 };
 
 function detect_collisions(state) {
-  const radius = level.ball_radius * WIDTH;
+  const radius = state.level.ball_radius;
   if (state.ball_y < BOTTOM + radius - 2) {
     state.failed = true;
+    return false;
   } else if (state.ball_x > MAX_X || state.ball_x < MIN_X) {
     console.log("ERROR");
     console.log(state);
-    state.paused = true;
-  } else {
-    const edges = get_paddle_edges(state);
-    for (let i = 0; i < 1; i++) {
-      process_edge(state, edges[i], state.paddle_dx);
+    if (state.ball_x > MAX_X) {
+      state.ball_x = MAX_X - state.level.ball_radius - 2;
+    } else {
+      state.ball_x = MIN_X + state.level.ball_radius + 2;
     }
-    for (let i = 0; i < WALLS.length; i++) {
-      process_edge(state, WALLS[i]);
+  }
+  const edges = get_paddle_edges(state);
+  for (let i = 0; i < 1; i++) {
+    if (detect_edge_collision(state, edges[i], state.paddle_dx)) {
+      state.current_run = 0;
     }
-    for (let i = 0; i < level.bricks.length; i++) {
-      if (state.bricks[i] === true) {
-        process_brick(state, i);
+  }
+  for (let i = 0; i < WALLS.length; i++) {
+    detect_edge_collision(state, WALLS[i]);
+  }
+  for (let i = 0; i < state.level.bricks.length; i++) {
+    if (state.bricks[i] === true) {
+      if (detect_brick_collision(state, i)) {
+        collect_brick(state, i);
       }
     }
   }
@@ -325,48 +366,63 @@ function detect_collisions(state) {
 
 function update_state(state) {
   detect_collisions(state);
-  if (!state.failed && !state.paused) {
-    state.ball_x += state.ball_vector_x;
-    state.ball_y += state.ball_vector_y;
-  }
+  state.ball_x += state.ball_vector_x;
+  state.ball_y += state.ball_vector_y;
 };
 
 function on_mouse_move(state, x, y) {
-  const half_width = (level.paddle_width * (WIDTH - BORDER*2)) / 2;
-  const min_x = BORDER + half_width; // + PADDLE_RAISE;
-  const max_x = WIDTH - BORDER - half_width; // - PADDLE_RAISE;
+  const half_width = (state.level.paddle_width * (WIDTH - BORDER*2)) / 2;
+  const max_range = MIDPOINT - half_width*2;
+  const dx_scaled = (MIDPOINT - x) / max_range;
+  const paddle_x = x; //MIDPOINT - (dx_scaled * half_width);
+  const paddle_min_x = BORDER + half_width;
+  const paddle_max_x = WIDTH - BORDER - half_width;
   const old_x = state.paddle_x;
-  state.paddle_x = Math.max(min_x, Math.min(x, max_x));
+  state.paddle_x = Math.max(paddle_min_x, Math.min(paddle_x, paddle_max_x));
+  // FIXME
   state.paddle_dx = (state.paddle_x - old_x) / 2;
 };
 
-function setup_events(state) {
+function setup_events(game) {
 
   function onMouseOut(evt) {
-    state.paused = true;
+    //state.paused = true;
   };
 
   function onMouseMove(evt) {
-    return on_mouse_move(state, evt.offsetX, evt.offsetY);
+    if (!game.ready && !game.paused) {
+      return on_mouse_move(game.state, evt.offsetX, evt.offsetY);
+    }
   };
 
   function onTimer(evt) {
-    if (state.failed) {
-      initialize_state(state);
-    } else if (!state.paused) {
-      update_state(state);
+    let gameOver = false;
+    if (game.state.failed) {
+      if (game.balls > 0) {
+        game.balls--;
+        game.state = initialize_state(levels[game.level_id]);
+        game.ready = true;
+      } else {
+        gameOver = true;
+      }
+    } else if (!game.paused && !game.ready) {
+      update_state(game.state);
+      if (game.state.bricks_remaining === 0) {
+        next_level(game);
+      }
     }
-    return draw_arena(state);
+    return draw(game, gameOver);
   };
 
   function onKey(evt) {
     switch (evt.code) {
       case "Space":
         console.log("pausing");
-        if (state.paused === true) {
-          state.paused = false;
+        if (game.paused === true || game.ready === true) {
+          game.paused = false;
+          game.ready = false;
         } else {
-          state.paused = true;
+          game.paused = true;
         }
         break;
     }
@@ -379,7 +435,58 @@ function setup_events(state) {
   window.setInterval(onTimer, TIMER_INTERVAL);
 };
 
-const state = create_state();
-initialize_state(state);
-setup_events(state);
+function initialize_state(level) {
+  const brickFlags = level.bricks.map((b) => true);
+  const lifetimes = level.bricks.map((b) => 0);
+  const theta = -(Math.PI / 2) + (Math.PI/8 - Math.random()*(Math.PI / 4));
+  return {
+    "level": level,
+    "bricks": brickFlags,
+    "paddle_x": WIDTH / 2,
+    "ball_x": WIDTH / 2,
+    "ball_y": 300,
+    "ball_vector_x": INITIAL_VELOCITY * Math.cos(theta),
+    "ball_vector_y": INITIAL_VELOCITY * Math.sin(theta),
+    "failed": false,
+    "current_score": 0,
+    "current_run": 0,
+    "bricks_remaining": level.bricks.length,
+    "brick_lifetimes": lifetimes
+  }
+};
+
+function next_level(game) {
+  game.level_id++;
+  game.score += game.state.current_score;
+  if (game.level_id >= levels.length) {
+    game.maxScore = Math.max(game.maxScore, game.score);
+    reset_game(game);
+  } else {
+    game.state = initialize_state(levels[game.level_id]);
+    game.ready = true;
+  }
+};
+
+function reset_game(game) {
+  game.level_id = 0;
+  game.score = 0;
+  game.balls = 5;
+  game.state = initialize_state(levels[game.level_id]);
+  game.paused = false;
+  game.ready = true;
+};
+
+const newGame = {
+  "level_id": 0,
+  "score": 0,
+  "maxScore": 0,
+  "balls": 5,
+  "state": null,
+  "paused": false,
+  "ready": false
+};
+
+reset_game(newGame);
+setup_events(newGame);
+
 };
