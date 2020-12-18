@@ -3,6 +3,7 @@
   * natechols
   * changelog:
   *   2020-12-16 playable single-level version
+  *   2020-12-17 multiple levels
   */
 
 function start_game(levels) {
@@ -17,8 +18,6 @@ const MIDPOINT = 800;
 const HEIGHT = 1000;
 const PADDLE_RAISE = 10;
 const PADDLE_HEIGHT = 5;
-const PADDLE_COLOR = "#ffffff";
-const BALL_COLOR = "#e0e0e0";
 const PADDLE_BOTTOM = BOTTOM + PADDLE_RAISE;
 const MAX_X = WIDTH - BORDER;
 const MIN_X = BORDER;
@@ -31,97 +30,110 @@ const WALLS = [
   [[WIDTH - BORDER, BOTTOM], [WIDTH - BORDER, HEIGHT - BORDER]]
 //  [[400, 500], [1200, 500]]
 ];
-const WALL_COLOR = "#ffffff";
 const BOTTOM_ZONE = [[BORDER, BOTTOM], [WIDTH - BORDER, BOTTOM]];
-const BOTTOM_COLOR = "#ff0000";
-
-function draw_bricks(ctx, state) {
-  const level = state.level;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < level.bricks.length; i++) {
-    const is_solid = state.bricks[i] === true;
-    const is_hit = state.brick_lifetimes[i] > 0;
-    if (is_solid || is_hit) {
-      const brick = level.bricks[i];
-      ctx.beginPath();
-      if (is_solid) {
-        ctx.fillStyle = level.brick_colors[i];
-      } else {
-        ctx.strokeStyle = level.brick_colors[i];
-      }
-      //console.log(level.brick_colors[i]);
-      const x = brick[0] + BRICK_BORDER;
-      const y = brick[1] + BRICK_BORDER;
-      const w = brick[2] - BRICK_BORDER*2;
-      const h = brick[3] - BRICK_BORDER*2;
-      if (is_solid) {
-        ctx.fillRect(x, y, w, h); //brick[0], brick[1], brick[2], brick[3]);
-      } else {
-        ctx.strokeRect(x, y, w, h);
-      }
-      ctx.stroke();
-      if (is_hit) {
-        state.brick_lifetimes[i]--;
-      }
-    }
-  }
-};
-
-function draw_edges(ctx) {
-  ctx.strokeStyle = WALL_COLOR;
-  ctx.lineWidth = 4;
-  for (let i = 0; i < WALLS.length; i++) {
-    const edge = WALLS[i];
-    ctx.beginPath();
-    ctx.moveTo(edge[0][0], edge[0][1]);
-    ctx.lineTo(edge[1][0], edge[1][1]);
-    ctx.stroke();
-  }
-};
-
-function draw_bottom(ctx) {
-  ctx.strokeStyle = BOTTOM_COLOR;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(BOTTOM_ZONE[0][0], BOTTOM_ZONE[0][1]);
-  ctx.lineTo(BOTTOM_ZONE[1][0], BOTTOM_ZONE[1][1]);
-  ctx.stroke();
-};
-
-function draw_paddle(ctx, paddle_x, paddle_width) {
-  ctx.beginPath();
-  ctx.strokeStyle = PADDLE_COLOR;
-  ctx.fillStyle = PADDLE_COLOR;
-  const half_width = (paddle_width * (WIDTH - BORDER*2)) / 2;
-  const x1 = paddle_x - half_width;
-  const y1 = PADDLE_BOTTOM - PADDLE_HEIGHT;
-  ctx.fillRect(x1, y1, half_width * 2, PADDLE_HEIGHT) //y2);
-  ctx.stroke();
-};
-
-function draw_ball(ctx, x, y, ballRadius) {
-  ctx.beginPath();
-  const grd = ctx.createRadialGradient(x, y, 1, x, y, ballRadius);
-  grd.addColorStop(0, "#c0ff80");
-  grd.addColorStop(1, "#60ff80");
-  ctx.fillStyle = grd; //BALL_COLOR;
-  ctx.arc(x, y, ballRadius, 0, Math.PI*2);
-  ctx.fill();
-};
-
-// this takes place in a transform that inverts the Y-axis
-function draw_arena(ctx, state) {
-  draw_bottom(ctx);
-  draw_edges(ctx);
-  draw_paddle(ctx, state.paddle_x, state.level.paddle_width);
-  draw_ball(ctx, state.ball_x, state.ball_y, state.level.ball_radius);
-  draw_bricks(ctx, state);
-  ctx.restore();
-};
 
 function draw(game, gameOver) {
+  const PADDLE_COLOR = "#ffffff";
+  const BALL_COLOR = "#e0e0e0";
+  const WALL_COLOR = "#ffffff";
+  const BOTTOM_COLOR = "#ff0000";
+
+  const state = game.state;
   const canvas = document.querySelector("canvas");
   const ctx = canvas.getContext("2d");
+
+  function draw_brick(brick, color, is_solid) {
+    ctx.beginPath();
+    if (is_solid) {
+      ctx.fillStyle = color;
+    } else {
+      ctx.strokeStyle = color;
+    }
+    //console.log(level.brick_colors[i]);
+    const x = brick[0] + BRICK_BORDER;
+    const y = brick[1] + BRICK_BORDER;
+    const w = brick[2] - BRICK_BORDER*2;
+    const h = brick[3] - BRICK_BORDER*2;
+    if (is_solid) {
+      ctx.fillRect(x, y, w, h); //brick[0], brick[1], brick[2], brick[3]);
+    } else {
+      ctx.strokeRect(x, y, w, h);
+    }
+    ctx.stroke();
+  };
+
+  function draw_bricks() {
+    const level = state.level;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < state.bricks.length; i++) {
+      const is_solid = state.bricks[i] === true;
+      const is_hit = state.brick_lifetimes[i] > 0;
+      if (is_solid || is_hit) {
+        const brick = state.level.bricks[i];
+        draw_brick(brick, level.brick_colors[i], is_solid);
+        if (is_hit) {
+          state.brick_lifetimes[i]--;
+        }
+      }
+    }
+  };
+
+  function draw_walls() {
+    ctx.strokeStyle = WALL_COLOR;
+    ctx.lineWidth = 4;
+    for (let i = 0; i < WALLS.length; i++) {
+      const edge = WALLS[i];
+      ctx.beginPath();
+      ctx.moveTo(edge[0][0], edge[0][1]);
+      ctx.lineTo(edge[1][0], edge[1][1]);
+      ctx.stroke();
+    }
+  };
+
+  function draw_bottom() {
+    ctx.strokeStyle = BOTTOM_COLOR;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(BOTTOM_ZONE[0][0], BOTTOM_ZONE[0][1]);
+    ctx.lineTo(BOTTOM_ZONE[1][0], BOTTOM_ZONE[1][1]);
+    ctx.stroke();
+  };
+
+  function draw_paddle() {
+    const x_center = state.paddle_x;
+    const paddle_width = state.level.paddle_width; // fractional
+    ctx.beginPath();
+    ctx.strokeStyle = PADDLE_COLOR;
+    ctx.fillStyle = PADDLE_COLOR;
+    const half_width = (paddle_width * (WIDTH - BORDER*2)) / 2;
+    const x1 = x_center - half_width;
+    const y1 = PADDLE_BOTTOM - PADDLE_HEIGHT;
+    ctx.fillRect(x1, y1, half_width * 2, PADDLE_HEIGHT) //y2);
+    ctx.stroke();
+  };
+
+  function draw_ball() {
+    const x = state.ball_x;
+    const y = state.ball_y;
+    const radius = state.level.ball_radius;
+    ctx.beginPath();
+    const grd = ctx.createRadialGradient(x, y, 1, x, y, radius);
+    grd.addColorStop(0, "#c0ff80");
+    grd.addColorStop(1, "#60ff80");
+    ctx.fillStyle = grd; //BALL_COLOR;
+    ctx.arc(x, y, radius, 0, Math.PI*2);
+    ctx.fill();
+  };
+
+  // this takes place in a transform that inverts the Y-axis
+  function draw_arena() {
+    draw_bottom();
+    draw_walls();
+    draw_paddle();
+    draw_ball();
+    draw_bricks();
+  };
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(0, canvas.height);
@@ -129,38 +141,52 @@ function draw(game, gameOver) {
   ctx.lineCap = "square";
   draw_arena(ctx, game.state, game.paused, gameOver);
   ctx.restore();
-  const textY = HEIGHT - 60;
-  if (gameOver === true) {
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ff0000";
+  draw_status();
+
+  function draw_status() {
+    const textY = HEIGHT - 60;
+    if (gameOver === true) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ff0000";
+      ctx.beginPath();
+      ctx.font = "20pt Monaco";
+      ctx.fillText("GAME OVER", WIDTH / 2, textY);
+      ctx.stroke();
+    } else if (game.paused === true || game.ready === true) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffff00";
+      ctx.beginPath();
+      ctx.font = "20pt Monaco";
+      const gameText = (game.paused === true) ? "PAUSED" : "READY - press Space to resume";
+      ctx.fillText(gameText, WIDTH / 2, textY);
+      ctx.stroke();
+    }
+    //ctx.textBaseline
+    ctx.fillStyle = "#60ff60";
+    ctx.font = "16pt Monaco";
     ctx.beginPath();
-    ctx.font = "20pt Monaco";
-    ctx.fillText("GAME OVER", WIDTH / 2, textY);
+    ctx.textAlign = "left";
+    const totalScore = game.score + game.state.current_score;
+    const maxScore = Math.max(game.maxScore, totalScore);
+    ctx.fillText(`Score: ${totalScore}  High Score: ${maxScore}`,
+                 BORDER, textY);
     ctx.stroke();
-  } else if (game.paused === true || game.ready === true) {
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ffff00";
     ctx.beginPath();
-    ctx.font = "20pt Monaco";
-    const gameText = (game.paused === true) ? "PAUSED" : "READY - press Space to resume";
-    ctx.fillText(gameText, WIDTH / 2, textY);
+    ctx.textAlign = "right";
+    const levelId = game.level_id + 1;
+    ctx.fillText(`Level: ${levelId}  Balls: ${game.balls}`,
+                 WIDTH - BORDER, textY);
     ctx.stroke();
-  }
-  //ctx.textBaseline
-  ctx.fillStyle = "#60ff60";
-  ctx.font = "16pt Monaco";
-  ctx.beginPath();
-  ctx.textAlign = "left";
-  const totalScore = game.score + game.state.current_score;
-  const maxScore = Math.max(game.maxScore, totalScore);
-  ctx.fillText(`Score: ${totalScore}  High Score: ${maxScore}`,
-               BORDER, textY);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.textAlign = "right";
-  const levelId = game.level_id + 1;
-  ctx.fillText(`Level: ${levelId}  Balls: ${game.balls}`,
-               WIDTH - BORDER, textY);
+  };
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(0, canvas.height);
+  ctx.scale(1, -1);
+  ctx.lineCap = "square";
+  draw_arena(ctx, game.state, game.paused, gameOver);
+  ctx.restore();
+  draw_status();
 };
 
 function get_paddle_edges(state) {

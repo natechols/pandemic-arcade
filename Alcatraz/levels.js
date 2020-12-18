@@ -25,7 +25,9 @@ function get_levels() {
     const bricks = [];
   //  const brick_colors = [];
     for (let i = 0; i < 7; i++) {
-      bricks.push([100 + (i*width), 800 - height, width, height]);
+      for (let j = 0; j < 2; j++) {
+        bricks.push([100 + (i*width), 800 - (j*height), width, height]);
+      }
     }
     return {
       "paddle_width": 0.4,
