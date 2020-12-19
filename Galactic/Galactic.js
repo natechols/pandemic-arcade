@@ -1,3 +1,7 @@
+/**
+  * this source code is in the public domain
+  */
+
 "use strict";
 
 const TO_DEGREES = 180 / Math.PI;
@@ -23,7 +27,8 @@ function Point (x, y) {
  * like Python.  I am not proud of this but since I already figured out the
  * math I find the style this enables easier to work with, at least in my
  * head.  Many of these methods are not used here yet but might be in a
- * more complex hypothetical future game.
+ * more complex hypothetical future game, although they should probably be
+ * replaced by a library at that point.
  */
 Point.prototype = {
   constructor: Point,
@@ -222,6 +227,10 @@ function get_props() {
   };
 };
 
+// FIXME the way object properties are tracked is incoherent - I'm mixing
+// constant and variable types in most of the models and this makes the
+// interfaces difficult to maintain.  All objects should use a common base
+// type that defines their motion and interaction with space.
 function new_ship(x, y, type_id) {
   return {
     "properties": get_props(),
@@ -239,7 +248,7 @@ function new_ship(x, y, type_id) {
     "is_destroyed": false,
     "lifetime": MAX_LIFETIME,
     "debris": [],
-    "shields": 0,
+    "shields": 0, // TODO
     "type": (type_id === undefined) ? 0 : type_id
   };
 };
@@ -743,15 +752,6 @@ function start_game(renderer) {
       }
       if (keys.has("Space")) {
         fire_weapon(player);
-      }
-    } else {
-      if (player.lifetime < 0) {
-        game.ships--;
-        if (game.ships >= 0) {
-          start_level(5);
-        } else {
-          game.state = "OVER";
-        }
       }
     }
   };

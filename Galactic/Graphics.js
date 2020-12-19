@@ -1,3 +1,7 @@
+/**
+  * this source code is in the public domain
+  */
+
 const HELP_TEXT = "Press 'p' to resume, arrow keys to maneuver, Space bar to fire";
 const Colors = {
   "PLAYER_OUTLINE": "#00ffff",
