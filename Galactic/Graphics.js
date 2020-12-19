@@ -1,13 +1,33 @@
+
+function make_polygon(n, radius) {
+  return [...Array(n).keys()].map((i) => {
+    const theta = Math.PI * 2 * (i / n);
+    const x = Math.cos(theta) * radius;
+    const y = Math.sin(theta) * radius;
+    return [x, y];
+  });
+};
+
+function random_grey() {
+  const k = 120 + Math.floor(Math.random()*100);
+  return `rgba(${k}, ${k}, ${k}, 0.8)`;
+};
+
 function render_space(ctx, space, w, h) {
+  const imgNames = ["bennu1", "bennu2", "bennu3", "bennu4"];
+  const imgs = imgNames.map((id) => document.getElementById(id));
+  const asteroidPatterns = imgs.map((i) => ctx.createPattern(i, "repeat"));
+  const bmpOffset = 60; // asteroid images are 120x120 pixels
+  const shipOutline = "#00ffff";
+  const shipFill = "#00a0f0";
+  //context.fillStyle = context.createPattern(image, "repeat");
+  //context.fillRect(0, 0, 300, 300);
 
   function render_ship(ship) {
     const xy = ship.position;
     const angle = ship.angle_pointed;
-//   const c3 = xy.plus_xy(15, 0).rotate_around(xy, angle);
-    //console.log(c1);
     ctx.save();
     ctx.translate(xy.x, xy.y);
-    //ctx.scale(2, 2);
     ctx.rotate(angle);
     const length = ship.radius * 2;
     if (ship.accel != 0 && !ship.is_destroyed) {
@@ -23,21 +43,14 @@ function render_space(ctx, space, w, h) {
       ctx.stroke();
     }
     // main body
-    let borderColor = "#00ffff";
-    let fillColor = "#00a0f0";
-    if (ship.is_destroyed) {
-      borderColor = "#ffa030";
-      fillColor = "#ff8030";
-    }
-    ctx.fillStyle = fillColor;
-    ctx.strokeStyle = borderColor;
+    ctx.fillStyle = shipFill;
+    ctx.strokeStyle = shipOutline;
     ctx.beginPath();
     // ship direction is the X-axis
     ctx.moveTo(-length/2, length/2);
     ctx.lineTo(length/2, 0);
     ctx.lineTo(-length/2, -length/2);
     ctx.closePath();
-    //ctx.fillStyle = "#00ffff"; //IFF_COLORS[o.get_iff_status()];
     ctx.fill();
     ctx.stroke();
     ctx.lineWidth = 1;
@@ -48,7 +61,7 @@ function render_space(ctx, space, w, h) {
     ];
     fins.forEach((fin) => {
       ctx.beginPath();
-      ctx.strokeStyle = borderColor; // IFF_COLORS[o.get_iff_status()];
+      ctx.strokeStyle = shipOutline;
       ctx.moveTo(fin[0][0], fin[0][1]);
       ctx.lineTo(fin[1][0], fin[1][1]);
       ctx.closePath();
@@ -76,52 +89,72 @@ function render_space(ctx, space, w, h) {
   function render_asteroid(a) {
     ctx.save();
     const xy = a.position;
+    const r = a.radius;
     ctx.lineWidth = 0;
-    ctx.strokeStyle = "#a0a0a0";
-    ctx.fillStyle = "#a0a0a0";
+    //ctx.strokeStyle = "#a0a0a0";
+    //ctx.fillStyle = "#a0a0a0";
+    const k = Math.min(200, 150 + Math.floor(1000*a.radial_velocity));
+    ctx.strokeStyle = `rgb(${k}, ${k}, ${k})`;
+    const asteroidPattern = asteroidPatterns[a.sides % 4];
+    ctx.fillStyle = asteroidPattern; //tx.strokeStyle;
     const renderAt = [[xy.x, xy.y]];
-    if (xy.x - a.radius < 0) {
+    if (xy.x - r < 0) {
       renderAt.push([xy.x + w, xy.y]);
-    } else if (xy.x + a.radius > w) {
+    } else if (xy.x + r > w) {
       renderAt.push([xy.x - w, xy.y]);
     }
-    if (xy.y - a.radius < 0) {
+    if (xy.y - r < 0) {
       renderAt.push([xy.x, xy.y + h]);
-    } else if (xy.y + a.radius > h) {
+    } else if (xy.y + r > h) {
       renderAt.push([xy.x, xy.y - h]);
     }
     renderAt.forEach((xy) => {
+      ctx.save();
+      ctx.translate(xy[0], xy[1]);
+      ctx.rotate(a.angle);
+      ctx.save();
+      ctx.translate(-bmpOffset, -bmpOffset);
       ctx.beginPath();
-      ctx.arc(xy[0], xy[1], a.radius, 0, 2*Math.PI);
+      const vertices = make_polygon(a.sides, r);
+      ctx.moveTo(vertices[0][0] + bmpOffset, vertices[0][1] + bmpOffset);
+      for (let i = 1; i < vertices.length; i++) {
+        ctx.lineTo(vertices[i][0] + bmpOffset, vertices[i][1] + bmpOffset);
+      };
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      ctx.restore();
+      ctx.restore();
     });
     ctx.restore();
   };
 
-  function render_debris_fragment(f, color) {
-    console.log("frag");
+  function render_debris_fragment(f, color, edgeColor) {
     const xy = f.position;
     ctx.save();
     ctx.translate(xy.x, xy.y);
     ctx.rotate(f.angle);
-    ctx.strokeStyle = color;
     ctx.fillStyle = color;
+    ctx.strokeStyle = (edgeColor !== undefined) ? edgeColor : color;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(-f.radius, 0);
     ctx.lineTo(f.radius, 0);
-    //ctx.lineTo(0, f.radius);
+    ctx.lineTo(0, f.radius);
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
     ctx.restore();
-    console.log(xy.x, xy.y);
   };
 
-  space.debris.forEach((f) => render_debris_fragment(f, "rgba(180,180,180,0.5)"));
-  render_ship(space.ship);
+  space.debris.forEach((f) => render_debris_fragment(f, random_grey()));
+  if (space.ship.is_destroyed) {
+    space.ship.debris.forEach((f) => {
+      render_debris_fragment(f, shipFill, shipOutline);
+    });
+  } else {
+    render_ship(space.ship);
+  }
   space.projectiles.forEach((p) => render_projectile(p));
   space.rocks.forEach((r) => render_asteroid(r));
 };

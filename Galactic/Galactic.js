@@ -259,18 +259,18 @@ function make_fragment(object) {
   const velocityNew = object.velocity.clone().add(delta.scale(Math.random()*2));
   return {
     "angle": angle,
-    "radius": Math.max(2, object.radius / 5),
+    "radius": Math.max(2, object.radius / 4),
     "position": object.position.clone().add(delta),
     "velocity": velocityNew,
     "velocity_abs": velocityNew.len(),
     "lifetime": SHARD_LIFETIME,
-    "radial_velocity": 0.5 - Math.random(),
+    "radial_velocity": 0.1 * (0.5 - Math.random()),
     "is_destroyed": false
   };
 };
 
-function make_debris(object) {
-  return [...Array(10)].map(() => make_fragment(object));
+function make_debris(object, nFragments) {
+  return [...Array(nFragments)].map(() => make_fragment(object));
 };
 
 function new_projectile(position, angle) {
@@ -292,7 +292,10 @@ function new_asteroid(position, velocity, radius) {
     "position": position,
     "velocity": velocity,
     "velocity_abs": velocity.len(),
-    "is_destroyed": false
+    "is_destroyed": false,
+    "angle": 0,
+    "radial_velocity": 0.05 * (0.5 - Math.random()),
+    "sides": Math.floor(Math.max(8, Math.random()*20))
   };
 };
 
@@ -314,7 +317,7 @@ function explode_asteroid(a) {
   }
   return {
     "rocks": newRocks,
-    "debris": make_debris(a)
+    "debris": make_debris(a, 10)
   };
 };
 
@@ -407,7 +410,7 @@ function update(space, t) {
   function detect_projectile_collisions(p, objects) {
     let nearest = null;
     let minDist = space.width;
-    objects.forEach((o) => {
+    objects.filter((o) => !o.is_destroyed).forEach((o) => {
       const dxy = detect_collision(p, o);
       if (dxy !== null && dxy < minDist) {
         nearest = o;
@@ -415,7 +418,6 @@ function update(space, t) {
       }
     });
     if (nearest !== null) {
-      console.log("detected collision:", nearest);
       nearest.is_destroyed = true;
       p.is_destroyed = true;
     }
@@ -425,12 +427,15 @@ function update(space, t) {
     space.projectiles.forEach((p) => {
       detect_projectile_collisions(p, space.rocks);
     });
-    space.rocks.forEach((rock) => {
-      const dxy = detect_collision(rock, space.ship);
-      if (dxy !== null) {
-        space.ship.is_destroyed = true;
-      }
-    });
+    if (!space.ship.is_destroyed) {
+      space.rocks.filter((r) => !r.is_destroyed).forEach((rock) => {
+        const dxy = detect_collision(rock, space.ship);
+        if (dxy !== null) {
+          space.ship.is_destroyed = true;
+          space.ship.debris = make_debris(space.ship, 20);
+        }
+      });
+    }
   };
 
   function update_projectile(p) {
@@ -532,9 +537,9 @@ function update(space, t) {
       const explosion = explode_asteroid(a);
       explosion.rocks.forEach((r) => space.rocks.push(r));
       explosion.debris.forEach((f) => space.debris.push(f));
-      console.log(explosion.debris);
     });
     space.rocks.forEach((rock) => {
+      rock.angle += rock.radial_velocity;
       update_position(rock);
     });
   };
@@ -557,6 +562,8 @@ function update(space, t) {
   function update_debris() {
     space.debris.forEach((f) => update_debris_fragment(f));
     space.debris = space.debris.filter((f) => !f.is_destroyed);
+    space.ship.debris.forEach((f) => update_debris_fragment(f));
+    space.ship.debris = space.ship.debris.filter((f) => !f.is_destroyed);
   };
 
   detect_collisions();
