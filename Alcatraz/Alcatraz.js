@@ -7,9 +7,10 @@
   */
 
 function start_game(levels) {
-const TIMER_INTERVAL = 4; // yes this works!
-const MAX_VELOCITY = 6; // calibrated to timer
-const INITIAL_VELOCITY = 2;
+// this is arbitrarily scaled
+const TIME_FACTOR = 10;
+const MAX_VELOCITY = 20;
+const INITIAL_VELOCITY = 4;
 const BORDER = 10;
 const BOTTOM = 100;
 const BRICK_BORDER = 2;
@@ -281,17 +282,19 @@ function get_reflected_angle(theta_edge, theta_ball) {
   const new_theta = Math.PI - dtheta;
   //const new_theta_abs = theta_edge + new_theta;
   const new_theta_abs = theta_edge + (Math.PI - ((Math.PI + theta_ball) - theta_edge))
+  /*
   console.log("theta_ball:", degrees(theta_ball),
               "theta_edge:", degrees(theta_edge),
               "dtheta:", degrees(dtheta),
               "new_theta:", degrees(new_theta),
               "abs(new_theta):", degrees(new_theta_abs));
+  */
   return new_theta_abs;
 };
 
 function compute_bounce_vector(state, edge, intersect, velocity) {
-  console.log("BOUNCE");
-  console.log("pos:", state.ball_x, state.ball_y);
+  //console.log("BOUNCE");
+  //console.log("pos:", state.ball_x, state.ball_y);
   const xy_ball = [state.ball_x, state.ball_y];
   const xy_edge = edge[0];
   const theta_ball = get_slope_angle(xy_ball, intersect);
@@ -303,15 +306,15 @@ function compute_bounce_vector(state, edge, intersect, velocity) {
   // FIXME this needs to be angle-constrained, instead of letting the ball
   // completely reverse course
   if (velocity !== undefined) {
-    console.log(dx, velocity);
-    dx += velocity;
+    const velScaled = (velocity !== 0) ? Math.sqrt(Math.abs(velocity)) : 0;
+    dx += (velocity >= 0) ? velScaled : -velScaled;
   }
-  dx = Math.min(dx, MAX_VELOCITY);
+  dx = (dx >= 0) ? Math.min(dx, MAX_VELOCITY) : Math.max(dx, -MAX_VELOCITY);
   const dy_scaled = Math.abs(dx*Math.tan(0.1744));
   dy = (dy < 0) ? Math.min(dy, -dy_scaled) : Math.max(dy, dy_scaled);
   state.ball_vector_x = dx;
   state.ball_vector_y = dy;
-  console.log("vec:", state.ball_vector_x, state.ball_vector_y);
+  //console.log("vec:", state.ball_vector_x, state.ball_vector_y);
 };
 
 function detect_edge_collision(state, edge, velocity) {
@@ -350,7 +353,7 @@ function detect_brick_collision(state, brick_idx) {
 };
 
 function collect_brick(state, brick_idx) {
-  console.log("POP:", brick_idx);
+  //console.log("POP:", brick_idx);
   state.bricks[brick_idx] = false;
   state.brick_lifetimes[brick_idx] = 20;
   state.current_score += state.current_run + 1;
@@ -390,10 +393,10 @@ function detect_collisions(state) {
   }
 };
 
-function update_state(state) {
+function update_state(state, dt) {
   detect_collisions(state);
-  state.ball_x += state.ball_vector_x;
-  state.ball_y += state.ball_vector_y;
+  state.ball_x += state.ball_vector_x * (dt / TIME_FACTOR);
+  state.ball_y += state.ball_vector_y * (dt / TIME_FACTOR);
 };
 
 function on_mouse_move(state, x, y) {
@@ -421,29 +424,9 @@ function setup_events(game) {
     }
   };
 
-  function onTimer(evt) {
-    let gameOver = false;
-    if (game.state.failed) {
-      if (game.balls > 0) {
-        game.balls--;
-        game.state = initialize_state(levels[game.level_id]);
-        game.ready = true;
-      } else {
-        gameOver = true;
-      }
-    } else if (!game.paused && !game.ready) {
-      update_state(game.state);
-      if (game.state.bricks_remaining === 0) {
-        next_level(game);
-      }
-    }
-    return draw(game, gameOver);
-  };
-
-  function onKey(evt) {
+  function onKeyUp(evt) {
     switch (evt.code) {
       case "Space":
-        console.log("pausing");
         if (game.paused === true || game.ready === true) {
           game.paused = false;
           game.ready = false;
@@ -453,12 +436,35 @@ function setup_events(game) {
         break;
     }
   };
-
   const canvas = document.querySelector("canvas");
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mouseout", onMouseOut);
-  window.addEventListener("keypress", onKey);
-  window.setInterval(onTimer, TIMER_INTERVAL);
+  window.addEventListener("keyup", onKeyUp);
+
+  let gameOver = false;
+  let lastTime = Date.now();
+  function gameLoop () {
+    const now = Date.now();
+    const dt = (now - lastTime);
+    lastTime = now;
+    if (game.state.failed) {
+      if (game.balls > 0) {
+        game.balls--;
+        game.state = initialize_state(levels[game.level_id]);
+        game.ready = true;
+      } else {
+        gameOver = true;
+      }
+    } else if (!game.paused && !game.ready) {
+      update_state(game.state, dt);
+      if (game.state.bricks_remaining === 0) {
+        next_level(game);
+      }
+    }
+    draw(game, gameOver);
+    requestAnimationFrame(gameLoop);
+  };
+  gameLoop();
 };
 
 function initialize_state(level) {
