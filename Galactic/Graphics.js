@@ -1,3 +1,14 @@
+const HELP_TEXT = "Press 'p' to resume, arrow keys to maneuver, Space bar to fire";
+const Colors = {
+  "PLAYER_OUTLINE": "#00ffff",
+  "PLAYER_FILL": "#00a0f0",
+  "PROJECTILE": ["#a0ff60", "#ffc0d0"],
+  "PLUME_CENTER": "#ff8000",
+  "PLUME_EDGE": "#ffe0c0",
+  "ALIEN_OUTLINE": "#ffc060",
+  "ALIEN_FILL": "#ff8030",
+  "ALIEN_LIGHTS": ["magenta", "red", "green", "cyan"]
+};
 
 function make_polygon(n, radius) {
   return [...Array(n).keys()].map((i) => {
@@ -22,8 +33,6 @@ function render_space(ctx, space, w, h) {
   const imgs = imgNames.map((id) => document.getElementById(id));
   const asteroidPatterns = imgs.map((i) => ctx.createPattern(i, "repeat"));
   const bmpOffset = 60; // asteroid images are 120x120 pixels
-  const shipOutline = "#00ffff";
-  const shipFill = "#00a0f0";
   //context.fillStyle = context.createPattern(image, "repeat");
   //context.fillRect(0, 0, 300, 300);
 
@@ -36,10 +45,10 @@ function render_space(ctx, space, w, h) {
     const length = ship.radius * 2;
     if (ship.accel != 0 && !ship.is_destroyed) {
       const grad = ctx.createRadialGradient(-length/2, 0, length/10, -length/2, 0, length/2);
-      grad.addColorStop(0, "#ff8000");
-      grad.addColorStop(1, "#ffe0c0");
+      grad.addColorStop(0, Colors.PLUME_CENTER);
+      grad.addColorStop(1, Colors.PLUME_EDGE);
       ctx.fillStyle = grad;
-      ctx.strokeStyle = "#ffe0c0";
+      ctx.strokeStyle = Colors.PLUME_EDGE;
       ctx.beginPath();
       ctx.arc(-length/2, 0, length*0.33, 0, Math.PI*2);
       ctx.closePath();
@@ -47,8 +56,8 @@ function render_space(ctx, space, w, h) {
       ctx.stroke();
     }
     // main body
-    ctx.fillStyle = shipFill;
-    ctx.strokeStyle = shipOutline;
+    ctx.fillStyle = Colors.PLAYER_FILL;
+    ctx.strokeStyle = Colors.PLAYER_OUTLINE;
     ctx.beginPath();
     // ship direction is the X-axis
     ctx.moveTo(-length/2, length/2);
@@ -65,7 +74,7 @@ function render_space(ctx, space, w, h) {
     ];
     fins.forEach((fin) => {
       ctx.beginPath();
-      ctx.strokeStyle = shipOutline;
+      ctx.strokeStyle = Colors.PLAYER_OUTLINE;
       ctx.moveTo(fin[0][0], fin[0][1]);
       ctx.lineTo(fin[1][0], fin[1][1]);
       ctx.closePath();
@@ -74,16 +83,52 @@ function render_space(ctx, space, w, h) {
     ctx.restore();
   };
 
+  function render_alien(ship) {
+    const xy = ship.position;
+    const r = ship.radius;
+    const angle = ship.angle_pointed;
+    ctx.save();
+    ctx.translate(xy.x, xy.y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.strokeStyle = Colors.ALIEN_OUTLINE;
+    ctx.fillStyle = Colors.ALIEN_FILL;
+    ctx.arc(0, 0, r, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, r/3, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    for (let i = 0; i < Colors.ALIEN_LIGHTS.length; i++) {
+      const theta = Math.PI*2*(i / Colors.ALIEN_LIGHTS.length);
+      const lightX = Math.cos(theta) * r * 0.67;
+      const lightY = Math.sin(theta) * r * 0.67;
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = Colors.ALIEN_OUTLINE;
+      ctx.fillStyle = Colors.ALIEN_LIGHTS[i];
+      ctx.arc(lightX, lightY, 3, 0, 2*Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  };
+
   function render_projectile(p) {
     const xy = p.position;
     ctx.save();
-    ctx.fillStyle = "#a0ff60";
-    ctx.strokeStyle = "#a0ff60";
+    ctx.fillStyle = Colors.PROJECTILE[p.type];
+    ctx.strokeStyle = ctx.fillStyle;
     //ctx.rotate(p.angle);
     ctx.beginPath();
     //ctx.moveTo(xy.x - 2, xy.y);
     //ctx.lineTo(xy.x + 2, xy.y);
-    ctx.arc(xy.x, xy.y, 2, 2*Math.PI, false);
+    ctx.arc(xy.x, xy.y, p.radius/2, 0, 2*Math.PI);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -156,15 +201,23 @@ function render_space(ctx, space, w, h) {
     const shade = 120 + 100 * (i / space.debris.length);
     render_debris_fragment(fragment, to_grey(shade));
   }
-  if (space.ship.is_destroyed) {
-    space.ship.debris.forEach((f) => {
-      render_debris_fragment(f, shipFill, shipOutline);
+  if (space.player.is_destroyed) {
+    space.player.debris.forEach((f) => {
+      render_debris_fragment(f, Colors.PLAYER_FILL, Colors.PLAYER_OUTLINE);
     });
   } else {
-    render_ship(space.ship);
+    render_ship(space.player);
   }
   space.projectiles.forEach((p) => render_projectile(p));
   space.rocks.forEach((r) => render_asteroid(r));
+  space.enemies.forEach((e) => {
+    if (e.is_destroyed) {
+      e.debris.forEach((f) =>
+        render_debris_fragment(f, Colors.ALIEN_FILL, Colors.ALIEN_OUTLINE));
+    } else {
+      render_alien(e);
+    }
+  });
 };
 
 function render_game(game, canvas) {
@@ -188,7 +241,7 @@ function render_game(game, canvas) {
     ctx.fillStyle = "#80ff30";
     ctx.textAlign = "left";
     ctx.beginPath();
-    ctx.fillText(`Level: ${game.level}`, 5, canvas.height - 10);
+    ctx.fillText(`Level: ${game.level+1}`, 5, canvas.height - 10);
     ctx.stroke();
     ctx.fillStyle = "#60c0ff";
     ctx.textAlign = "center";
@@ -208,7 +261,7 @@ function render_game(game, canvas) {
       main_status(game.state, "#ffff00");
       ctx.beginPath();
       ctx.font = "18pt Monaco";
-      ctx.fillText("Press 'p' to resume", w / 2, 100 + h / 2);
+      ctx.fillText(HELP_TEXT, w / 2, 100 + h / 2);
       ctx.stroke();
     } else if (game.state === "OVER") {
       main_status("GAME OVER", "#ff0000");
@@ -219,6 +272,11 @@ function render_game(game, canvas) {
   };
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.closePath();
+  ctx.stroke();
   render_credits();
   ctx.save();
   ctx.translate(0, canvas.height);

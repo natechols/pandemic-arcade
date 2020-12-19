@@ -17,6 +17,14 @@ function Point (x, y) {
   this.y = y;
 };
 
+/**
+ * Here is some object-oriented code for handling the math, copied from an
+ * aborted earlier project when I still thought I could write JavaScript
+ * like Python.  I am not proud of this but since I already figured out the
+ * math I find the style this enables easier to work with, at least in my
+ * head.  Many of these methods are not used here yet but might be in a
+ * more complex hypothetical future game.
+ */
 Point.prototype = {
   constructor: Point,
 
@@ -176,13 +184,12 @@ function get_vector(angle, magnitude) {
 };
 
 /***********************************************************************/
-/* Main Game */
+/* Main game */
+
 const BASE_MASS = 10;
 const BASE_ACCEL = 100;
 const BASE_VELOCITY = 100;
 const BASE_TURN = 100;
-// TODO
-const TURN_INCREMENT = 0;
 const RELOAD_TIME = 100; // millis
 const MAX_LIFETIME = 2000;
 const SHARD_LIFETIME = 500;
@@ -199,7 +206,7 @@ const COUNTERCLOCKWISE = -1;
 
 function new_game() {
   return {
-    "level": 1,
+    "level": 0,
     "maxScore": 0,
     "ships": 5,
     "state": "READY",
@@ -215,7 +222,7 @@ function get_props() {
   };
 };
 
-function new_ship(x, y) {
+function new_ship(x, y, type_id) {
   return {
     "properties": get_props(),
     "radius": 20,
@@ -227,12 +234,13 @@ function new_ship(x, y) {
     "was_accelerating": 0,
     "angle_moving": 0,
     "angle_pointed": 0,
-    "angle_pointed_exact": 0,
     "last_fired": 0,
     "fired_projectiles": [],
     "is_destroyed": false,
     "lifetime": MAX_LIFETIME,
-    "debris": []
+    "debris": [],
+    "shields": 0,
+    "type": (type_id === undefined) ? 0 : type_id
   };
 };
 
@@ -240,15 +248,25 @@ function new_space(width, height) {
   return {
     "width": width,
     "height": height,
-    "ship": null,
+    "player": null,
     "rocks": [],
+    "enemies": [],
     "others": [],
     "projectiles": [],
-    "debris": []
+    "debris": [],
+    "lifetime": MAX_LIFETIME
   };
 };
 
-function get_projectile_props() {
+function space_cleared(space) {
+  return (space.player.is_destroyed === false &&
+          space.rocks.length === 0 &&
+          space.enemies.length === 0 &&
+          space.others.length === 0);
+};
+
+function get_projectile_props(type_id) {
+  const i = (type_id === undefined) ? 0 : type_id;
   return {
     "distance_max": PROJECTILE_DISTANCE,
     "velocity": PROJECTILE_VELOCITY
@@ -258,7 +276,7 @@ function get_projectile_props() {
 function make_fragment(object) {
   const angle = Math.random() * Math.PI * 2;
   const delta = Vector.from_angle(angle).scale(Math.random() * object.radius);
-  const velocityNew = object.velocity.clone().add(delta.scale(Math.random()*2));
+  const velocityNew = object.velocity.clone().add(delta.scale(Math.random()*4));
   return {
     "angle": angle,
     "radius": Math.max(2, object.radius / 4),
@@ -275,8 +293,8 @@ function make_debris(object, nFragments) {
   return [...Array(nFragments)].map(() => make_fragment(object));
 };
 
-function new_projectile(position, angle) {
-  const props = get_projectile_props();
+function new_projectile(position, angle, type_id) {
+  const props = get_projectile_props(type_id);
   return {
     "properties": props,
     "position": position.clone(),
@@ -284,11 +302,12 @@ function new_projectile(position, angle) {
     "angle": angle,
     "velocity": props.velocity,
     "distance_traveled": 0,
-    "is_destroyed": false
+    "is_destroyed": false,
+    "type": (type_id === undefined) ? 0 : type_id
   };
 };
 
-function new_asteroid(position, velocity, radius) {
+function new_asteroid(position, velocity, radius, nFrag) {
   return {
     "radius": radius,
     "position": position,
@@ -297,24 +316,28 @@ function new_asteroid(position, velocity, radius) {
     "is_destroyed": false,
     "angle": 0,
     "radial_velocity": 0.05 * (0.5 - Math.random()),
-    "sides": Math.floor(Math.max(8, Math.random()*20))
+    "sides": Math.floor(Math.max(8, Math.random()*20)),
+    "nFrag": (nFrag === undefined) ? 2 : nFrag
   };
 };
 
-function new_asteroid_at(pos, angle, radius) {
+function new_asteroid_at(a, iAngle) {
+  const theta = a.velocity.angle();
+  const dtheta = Math.random() * (Math.PI / 2);
+  const angle = (iAngle % 2 === 0) ? theta + dtheta : theta - dtheta;
   const direction = new Vector(Math.cos(angle), Math.sin(angle));
   const velocity = 100;
-  return new_asteroid(pos.clone(), direction.scale(velocity), radius);
+  return new_asteroid(a.position.clone(),
+                      direction.scale(velocity),
+                      a.radius / 2,
+                      a.nFrag);
 };
 
 function explode_asteroid(a) {
   const newRocks = [];
   if (a.radius >= 20) {
-    for (let i = 0; i < 2; i++) {
-      const theta = a.velocity.angle();
-      const dtheta = Math.random() * (Math.PI / 2);
-      const angle = (i === 0) ? theta + dtheta : theta - dtheta;
-      newRocks.push(new_asteroid_at(a.position, angle, a.radius / 2));
+    for (let i = 0; i < a.nFrag; i++) {
+      newRocks.push(new_asteroid_at(a, i));
     }
   }
   return {
@@ -323,7 +346,7 @@ function explode_asteroid(a) {
   };
 };
 
-function random_asteroid(w, h, ship) {
+function new_random_asteroid(w, h, ship, nFrag) {
   const angle = Math.random() * (Math.PI * 2);
   const direction = new Vector(Math.cos(angle), Math.sin(angle));
   let pos = new Point(Math.random() * w, Math.random() * h);
@@ -332,7 +355,23 @@ function random_asteroid(w, h, ship) {
     pos = new Point(Math.random() * w, Math.random() * h);
   }
   const velocity = 100;
-  return new_asteroid(pos, direction.scale(velocity), 50);
+  return new_asteroid(pos, direction.scale(velocity), 50, nFrag);
+};
+
+function new_random_enemy(w, h, player, type_id) {
+  const angle = Math.random() * (Math.PI * 2);
+  const direction = new Vector(Math.cos(angle), Math.sin(angle));
+  // enemies always arrive from the top of the screen
+  let pos = new Point(Math.random() * w, h); //Math.random() * h);
+  // this avoids crashing into the player immediately
+  while (pos.distance(player.position) < 400) {
+    pos = new Point(Math.random() * w, Math.random() * h);
+  }
+  const ship = new_ship(pos.x, pos.y, type_id);
+  const vabs = 100;
+  ship.velocity = direction.scale(vabs);
+  ship.velocity_abs = vabs
+  return ship;
 };
 
 function accelerate(ship, x) {
@@ -369,7 +408,7 @@ function fire_weapon(ship) {
   const dt = now - ship.last_fired;
   if (dt > RELOAD_TIME) {
     const xy = get_ship_front(ship);
-    const p = new_projectile(xy, ship.angle_pointed);
+    const p = new_projectile(xy, ship.angle_pointed, ship.type);
     ship.fired_projectiles.push(p);
     ship.last_fired = now;
   }
@@ -381,6 +420,7 @@ function transfer_momentum(fromObj, toObj) {
 };
 
 function update(space, t) {
+  const player = space.player
 
   function update_position(object) {
     if (object.velocity_abs != 0) {
@@ -414,7 +454,7 @@ function update(space, t) {
     return null;
   };
 
-  function detect_projectile_collisions(p, objects) {
+  function detect_projectile_collisions(p, objects, callback) {
     let nearest = null;
     let minDist = space.width;
     objects.filter((o) => !o.is_destroyed).forEach((o) => {
@@ -425,26 +465,53 @@ function update(space, t) {
       }
     });
     if (nearest !== null) {
-      nearest.is_destroyed = true;
+      if (callback === undefined) {
+        nearest.is_destroyed = true;
+      } else {
+        callback(nearest);
+      }
       p.is_destroyed = true;
     }
+  };
+
+  function destroy_ship(ship) {
+    ship.is_destroyed = true;
+    ship.debris = make_debris(ship, 40);
+    ship.lifetime = MAX_LIFETIME;
+    return true;
+  };
+
+  function detect_player_collisions(object) {
+    const dxy = detect_collision(object, player);
+    if (dxy !== null && !player.is_destroyed) {
+      transfer_momentum(object, player);
+      return destroy_ship(player);
+    }
+  };
+
+  function get_all_deadly_objects() {
+    return space.rocks
+                .concat(space.enemies)
+                .filter((o) => !o.is_destroyed);
   };
 
   function detect_collisions() {
     space.projectiles.forEach((p) => {
       detect_projectile_collisions(p, space.rocks);
-    });
-    if (!space.ship.is_destroyed) {
-      space.rocks.filter((r) => !r.is_destroyed).forEach((rock) => {
-        const dxy = detect_collision(rock, space.ship);
-        if (dxy !== null) {
-          space.ship.is_destroyed = true;
-          transfer_momentum(rock, space.ship);
-          space.ship.debris = make_debris(space.ship, 20);
+      if (!p.is_destroyed) {
+        if (p.type === 0) {
+          detect_projectile_collisions(p, space.enemies, destroy_ship);
+        } else {
+          detect_projectile_collisions(p, [player], destroy_ship);
         }
-      });
+      }
+    });
+    const objects = get_all_deadly_objects();
+    for (let i = 0; i < objects.length && !player.is_destroyed; i++) {
+      detect_player_collisions(objects[i]);
     }
   };
+
 
   function update_projectile(p) {
     if (p.distance_traveled > p.properties.distance_max) {
@@ -455,6 +522,9 @@ function update(space, t) {
       p.distance_traveled += delta.len();
       p.position.add(delta);
       wrap_position(p);
+      if (p.type > 0) {
+        p.radius *= 1.0 + t/1000;
+      }
       // the collision detection is handled after an update - therefore the
       // decision of whether or not to destroy the projectile is postponed
       // until the next update.
@@ -477,31 +547,10 @@ function update(space, t) {
     ship.fired_projectiles = [];
     // Turning
     if (ship.turn != 0 && !ship.is_destroyed) {
-      // for now turning is treated exactly as in Maelstrom and Escape Velocity,
-      // i.e. done in fixed increments (here 10 degrees), in order to facilitate
-      // sprites based
-      // on a limited number of rotated views.  to handle this, we track both
-      // the actual angle (which is modified whenever a turn is requested),
-      // and the nearest 10-degree increment.
-      // XXX undecided: should acceleration/motion and weapon fire use the
-      // actual ("fractional") angle, or the incremental one?
       const t_current = radians_to_degrees(ship.angle_pointed);
       const dt = t * TURN_TIME_SCALE;
       const dt_deg = ship.turn * props.turn_rate * dt;
-      ship.angle_pointed_exact += dt_deg;
-      if (TURN_INCREMENT > 0) {
-        const t_delta = Math.abs(t_current - ship.angle_pointed_exact);
-        if (t_delta > 10) { // go to next 10-degree increment
-          const dt_int = 10 * Math.floor(t_delta / 10);
-          if (t_current < ship.angle_pointed_exact) {
-            ship.angle_pointed = degrees_to_radians(t_current - dt_int);
-          } else {
-            ship.angle_pointed = degrees_to_radians(t_current + dt_int);
-          }
-        }
-      } else {
-        ship.angle_pointed = degrees_to_radians(ship.angle_pointed_exact);
-      }
+      ship.angle_pointed += degrees_to_radians(dt_deg);
       ship.turn = 0; // reset for next timestep
     }
     // Acceleration
@@ -538,6 +587,14 @@ function update(space, t) {
     ship.was_accelerating = false;
   };
 
+  function update_player() {
+    if (player.is_destroyed) {
+      player.lifetime -= t;
+    } else {
+      update_ship(player);
+    }
+  };
+
   function update_asteroids() {
     const destroyed = space.rocks.filter((r) => r.is_destroyed);
     space.rocks = space.rocks.filter((r) => !r.is_destroyed);
@@ -552,9 +609,22 @@ function update(space, t) {
     });
   };
 
+  function update_enemies() {
+    space.enemies.forEach((e) => {
+      if (!e.is_destroyed) {
+        turn(e, CLOCKWISE);
+        fire_weapon(e);
+        update_ship(e);
+      } else {
+        e.lifetime -= t;
+      }
+    });
+    space.enemies = space.enemies.filter((e) =>
+      !e.is_destroyed || e.lifetime > 0);
+  };
+
   function update_others() {
-    space.others.forEach((o) => update_position(o));
-    space.others = space.others.filter((o) => !o.is_destroyed);
+    // TODO
   };
 
   function update_debris_fragment(f) {
@@ -567,19 +637,32 @@ function update(space, t) {
     }
   };
 
+  function update_object_debris(object) {
+    object.debris.forEach((f) => update_debris_fragment(f));
+    object.debris = object.debris.filter((f) => !f.is_destroyed);
+  };
+
+  // FIXME this sucks
   function update_debris() {
-    space.debris.forEach((f) => update_debris_fragment(f));
-    space.debris = space.debris.filter((f) => !f.is_destroyed);
-    space.ship.debris.forEach((f) => update_debris_fragment(f));
-    space.ship.debris = space.ship.debris.filter((f) => !f.is_destroyed);
+    [space, player].concat(space.enemies).forEach((object) =>
+      update_object_debris(object));
   };
 
   detect_collisions();
   update_projectiles();
-  update_ship(space.ship);
+  update_player();
   update_asteroids();
+  update_enemies();
   update_others();
   update_debris();
+  if (space_cleared(space)) {
+    space.lifetime -= t;
+  }
+};
+
+function set_background(level) {
+  const canvas = document.querySelector("canvas");
+  canvas.style = `background-image: url('images/hubble${level}.jpg');`;
 };
 
 function start_game(renderer) {
@@ -588,11 +671,33 @@ function start_game(renderer) {
   const h = canvas.height;
   const game = new_game();
 
-  function start_level(nRocks) {
+  const levels = [
+    {
+      "rocks": [2, 2, 2]
+    },
+    {
+      "rocks": [2, 2, 2, 3]
+    },
+    {
+      "rocks": [2, 2, 2],
+      "enemies": [1]
+    }
+  ];
+
+  function start_level() {
+    set_background(game.level);
+    const level = levels[game.level];
     const space = new_space(w, h);
-    space.ship = new_ship(w / 2, h / 2);
-    for (let i = 0; i < nRocks; i++) {
-      space.rocks.push(random_asteroid(w, h, space.ship));
+    space.player = new_ship(w / 2, h / 2);
+    for (let i = 0; i < level.rocks.length; i++) {
+      const nFrag = level.rocks[i];
+      space.rocks.push(new_random_asteroid(w, h, space.player, nFrag));
+    }
+    if (level.enemies !== undefined) {
+      for (let i = 0; i < level.enemies.length; i++) {
+        const enemyId = level.enemies[i];
+        space.enemies.push(new_random_enemy(w, h, space.player, enemyId));
+      }
     }
     game.current_space = space;
     game.state = "READY";
@@ -622,28 +727,48 @@ function start_game(renderer) {
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
 
-  function refresh_ship_state(ship, dt) {
-    if (!ship.is_destroyed) {
+  function handle_player_state() {
+    const player = game.current_space.player;
+    if (!player.is_destroyed) {
       //console.log("current keys: ", keys);
       if (keys.has("ArrowLeft")) {
-        turn(ship, CLOCKWISE);
+        turn(player, CLOCKWISE);
       } else if (keys.has("ArrowRight")) {
-        turn(ship, COUNTERCLOCKWISE);
+        turn(player, COUNTERCLOCKWISE);
       } else if (keys.has("ArrowDown")) {
-        reverse_course(ship);
+        reverse_course(player);
       }
       if (keys.has("ArrowUp")) {
-        accelerate(ship);
+        accelerate(player);
       }
       if (keys.has("Space")) {
-        fire_weapon(ship);
+        fire_weapon(player);
       }
     } else {
-      ship.lifetime -= dt;
-      if (ship.lifetime < 0) {
+      if (player.lifetime < 0) {
         game.ships--;
         if (game.ships >= 0) {
           start_level(5);
+        } else {
+          game.state = "OVER";
+        }
+      }
+    }
+  };
+
+  function handle_game_state() {
+    if (game.current_space.lifetime < 0) {
+      game.level++;
+      if (game.level === levels.length) {
+        game.state = "WON";
+      } else {
+        start_level();
+      }
+    } else {
+      if (game.current_space.player.lifetime < 0) {
+        game.ships--;
+        if (game.ships >= 0) {
+          start_level();
         } else {
           game.state = "OVER";
         }
@@ -656,17 +781,15 @@ function start_game(renderer) {
     const now = Date.now();
     const dt = (now - lastTime); // millis
     if (!isPaused() && !isOver()) {
-      refresh_ship_state(game.current_space.ship, dt);
+      handle_player_state();
       update(game.current_space, dt);
-      if (game.current_space.rocks.length === 0) {
-        game.state = "WON"; // FIXME debris shading artifact
-      }
+      handle_game_state();
     }
     renderer(game, canvas);
     lastTime = now;
     requestAnimationFrame(gameLoop);
   };
 
-  start_level(5);
+  start_level();
   gameLoop();
 };
