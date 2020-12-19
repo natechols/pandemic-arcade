@@ -8,9 +8,13 @@ function make_polygon(n, radius) {
   });
 };
 
+function to_grey(k) {
+  return `rgba(${k}, ${k}, ${k}, 0.5)`;
+};
+
 function random_grey() {
   const k = 120 + Math.floor(Math.random()*100);
-  return `rgba(${k}, ${k}, ${k}, 0.8)`;
+  return to_grey(k);
 };
 
 function render_space(ctx, space, w, h) {
@@ -147,7 +151,11 @@ function render_space(ctx, space, w, h) {
     ctx.restore();
   };
 
-  space.debris.forEach((f) => render_debris_fragment(f, random_grey()));
+  for (let i = 0; i < space.debris.length; i++) {
+    const fragment = space.debris[i];
+    const shade = 120 + 100 * (i / space.debris.length);
+    render_debris_fragment(fragment, to_grey(shade));
+  }
   if (space.ship.is_destroyed) {
     space.ship.debris.forEach((f) => {
       render_debris_fragment(f, shipFill, shipOutline);

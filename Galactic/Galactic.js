@@ -183,9 +183,11 @@ const BASE_VELOCITY = 100;
 const BASE_TURN = 100;
 // TODO
 const TURN_INCREMENT = 0;
-const RELOAD_TIME = 250; // millis
+const RELOAD_TIME = 100; // millis
 const MAX_LIFETIME = 2000;
 const SHARD_LIFETIME = 500;
+const PROJECTILE_DISTANCE = 400;
+const PROJECTILE_VELOCITY = 400;
 // scales various rates versus timestep such that setting the equivalent ship
 // property to '100' is approximately what the starting player ship should be.
 const TURN_TIME_SCALE = 1 / 750;
@@ -248,8 +250,8 @@ function new_space(width, height) {
 
 function get_projectile_props() {
   return {
-    "distance_max": 400,
-    "velocity": 400
+    "distance_max": PROJECTILE_DISTANCE,
+    "velocity": PROJECTILE_VELOCITY
   };
 };
 
@@ -373,6 +375,11 @@ function fire_weapon(ship) {
   }
 };
 
+function transfer_momentum(fromObj, toObj) {
+  toObj.velocity.add(fromObj.velocity.clone());
+  toObj.velocity_abs = toObj.velocity.len();
+};
+
 function update(space, t) {
 
   function update_position(object) {
@@ -432,6 +439,7 @@ function update(space, t) {
         const dxy = detect_collision(rock, space.ship);
         if (dxy !== null) {
           space.ship.is_destroyed = true;
+          transfer_momentum(rock, space.ship);
           space.ship.debris = make_debris(space.ship, 20);
         }
       });
@@ -583,7 +591,7 @@ function start_game(renderer) {
   function start_level(nRocks) {
     const space = new_space(w, h);
     space.ship = new_ship(w / 2, h / 2);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < nRocks; i++) {
       space.rocks.push(random_asteroid(w, h, space.ship));
     }
     game.current_space = space;
@@ -635,7 +643,7 @@ function start_game(renderer) {
       if (ship.lifetime < 0) {
         game.ships--;
         if (game.ships >= 0) {
-          start_level(3);
+          start_level(5);
         } else {
           game.state = "OVER";
         }
@@ -651,7 +659,7 @@ function start_game(renderer) {
       refresh_ship_state(game.current_space.ship, dt);
       update(game.current_space, dt);
       if (game.current_space.rocks.length === 0) {
-        game.state = "WON";
+        game.state = "WON"; // FIXME debris shading artifact
       }
     }
     renderer(game, canvas);
@@ -659,6 +667,6 @@ function start_game(renderer) {
     requestAnimationFrame(gameLoop);
   };
 
-  start_level(3);
+  start_level(5);
   gameLoop();
 };
