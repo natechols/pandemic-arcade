@@ -1,0 +1,32 @@
+<!--
+  this code is in the public domain, background images by ESA/Hubble
+-->
+
+<html>
+<head>
+<title>Galactic</title>
+<link rel="stylesheet" type="text/css" href="../main.css">
+<script src="Galactic.js" language="JavaScript"></script>
+<script src="Graphics.js" language="JavaScript"></script>
+<style>
+canvas {
+  background-image: url('images/hubble0.jpg');
+  cursor: none;
+}
+</style>
+</head>
+<body>
+<center>
+<canvas width="1600" height="1000">galaxy</canvas>
+<img src="images/bennu1.jpg" width="0" height"0" alt="asteroid" id="bennu1"/>
+<img src="images/bennu2.jpg" width="0" height"0" alt="asteroid" id="bennu2"/>
+<img src="images/bennu3.jpg" width="0" height"0" alt="asteroid" id="bennu3"/>
+<img src="images/bennu4.jpg" width="0" height"0" alt="asteroid" id="bennu4"/>
+<script language="JavaScript">
+window.onload = function () {
+  start_game(render_game);
+};
+</script>
+</center>
+</body>
+</html>
