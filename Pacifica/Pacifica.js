@@ -13,8 +13,6 @@
 // the array represents layers, starting from the bottom.
 function make_board (layout, tileSize, renderer) {
 const N_IMAGES = 36;
-const N_TILE_SETS = 2;
-let tileSet = 0;
 let tileIdx = 0;
 const ROWS = 14;
 const COLS = 8;
@@ -124,7 +122,7 @@ function draw_tile (ctx, tile) {
   draw_tile_borders(ctx, tile);
   const x = tile.x;
   const y = tile.y;
-  renderer(ctx, x, y, tile.tileId, tileSet);
+  renderer.render_tile(ctx, x, y, tile.tileId);
   // selection highlight
   if (tile.isSelected) {
     ctx.save();
@@ -281,7 +279,7 @@ function setup_events(board) {
     switch (evt.code) {
       case "Space":
         console.log("space");
-        tileSet = (tileSet === N_TILE_SETS - 1) ? 0 : tileSet + 1;
+        renderer.next_tile_set();
         draw_board(board);
         break;
       case x:
