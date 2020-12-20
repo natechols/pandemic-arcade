@@ -7,6 +7,7 @@
 <link rel="stylesheet" type="text/css" href="../main.css">
 <script src="Pacifica.js" language="JavaScript"></script>
 <script src="layouts.js" language="JavaScript"></script>
+<script src="tiles.js" language="JavaScript"></script>
 <style>
 canvas {
   background-image: url('../images/bg0.jpeg');
@@ -18,11 +19,7 @@ canvas {
 <canvas>Game Board</canvas>
 <script language="JavaScript">
 // preload images
-const urlParams = new URLSearchParams(window.location.search);
-let numImages = 36;
-if (urlParams.has("numImages")) {
-  numImages = parseInt(urlParams.get("numImages"));
-}
+const numImages = 36;
 for (let i = 1; i <= numImages; i++) {
   document.write(`<img src="tiles/tile${i}.jpg" width="0" height="0"/>`);
 }
@@ -37,7 +34,7 @@ window.onload = function () {
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const imageSize = canvasWidth / 16;
-  make_board(get_layout(), numImages, imageSize);
+  make_board(get_layout(), imageSize, renderer(imageSize));
 }
 </script>
 <p><font class="note">All source code and backgrounds are my original work, but I do not own the copyright to all of the tile images.</font></p>
