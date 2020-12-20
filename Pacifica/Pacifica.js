@@ -11,7 +11,10 @@
 // which represent tile positions as unit (i,j) coordinates (these can be
 // fractional, but usually in increments of 0.5).  the outer dimension of
 // the array represents layers, starting from the bottom.
-function make_board (layout, numImages, tileSize) {
+function make_board (layout, tileSize, renderer) {
+const N_IMAGES = 36;
+const N_TILE_SETS = 2;
+let tileSet = 0;
 let tileIdx = 0;
 const ROWS = 14;
 const COLS = 8;
@@ -22,16 +25,7 @@ const TILE_BORDER = "#000000";
 const LAYER_BORDERS = ["#404040", "#606060", "#808080", "#b0b0b0", "#e0e0e0"];
 const SELECTED_HIGHLIGHT = 'rgba(0, 0, 0, 0.5)'
 const SELECTED_LAYER_HIGHLIGHT = "#000000";
-
-function load_tile_images () {
-  const images = [];
-  for (let i = 1; i <= numImages; i++) {
-    const tileImg = new Image();
-    tileImg.src = `tiles/tile${i}.jpg`;
-    images.push(tileImg);
-  }
-  return images;
-};
+const READY_STATUS = "Reload to generate a new board with random layout; space key switches tile set";
 
 function to_screen_pos(n, layer, border) {
   const offset = layer * OFFSET_3D;
@@ -73,7 +67,7 @@ function make_tiles () {
     tileIds.push(tileId);
     tileIds.push(tileId);
     tileId++;
-    if (tileId >= numImages) {
+    if (tileId >= N_IMAGES) {
       tileId = 0;
     }
   }
@@ -91,14 +85,14 @@ function make_tiles () {
   return tiles;
 };
 
-function draw_tile (ctx, tile, images) {
-  const img = images[tile.tileId];
-  ctx.beginPath();
+function draw_tile_borders(ctx, tile) {
+  ctx.save();
   ctx.strokeStyle = TILE_BORDER;
   const x = tile.x;
   const y = tile.y;
   ctx.lineWidth = 4;
-  ctx.strokeRect(x, y, tileSize - 2, tileSize - 2);
+  ctx.beginPath();
+  ctx.strokeRect(x, y, tileSize, tileSize);
   // bottom and right tile sides in 3D
   ctx.beginPath();
   if (tile.isSelected) {
@@ -121,13 +115,22 @@ function draw_tile (ctx, tile, images) {
   ctx.beginPath();
   ctx.moveTo(x + tileSize, y + tileSize);
   ctx.lineTo(x + tileSize + OFFSET_3D, y + tileSize + OFFSET_3D);
+  ctx.closePath();
   ctx.stroke();
-  // tile image
-  ctx.drawImage(img, x, y, tileSize - 2, tileSize - 2);
+  ctx.restore();
+};
+
+function draw_tile (ctx, tile) {
+  draw_tile_borders(ctx, tile);
+  const x = tile.x;
+  const y = tile.y;
+  renderer(ctx, x, y, tile.tileId, tileSet);
   // selection highlight
   if (tile.isSelected) {
+    ctx.save();
     ctx.fillStyle = SELECTED_HIGHLIGHT;
     ctx.fillRect(x, y, tileSize, tileSize);
+    ctx.restore();
   }
 };
 
@@ -135,6 +138,7 @@ function draw_board (board) {
   const canvas = document.querySelector("canvas");
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
   ctx.strokeStyle = "#ffff00";
   ctx.fillStyle = "#ffff00";
   ctx.font = "24px Futura";
@@ -142,9 +146,11 @@ function draw_board (board) {
   ctx.fillText(`Score: ${board.score}`, 10, 30);
   ctx.textAlign = "right";
   ctx.fillText(board.status_txt, canvas.width - 10, 30);
+  ctx.stroke();
+  ctx.restore();
   board.tiles.forEach(function (tile) {
     if (tile.isActive) {
-      draw_tile(ctx, tile, board.images);
+      draw_tile(ctx, tile); //board.images);
     }
   });
 };
@@ -254,7 +260,7 @@ function update_from_selection(board, cheatMode) {
 function setup_events(board) {
   function onMouseDown (evt) {
     if (board.score === board.tiles.length) {
-      board.status_txt = "Reload to generate a new board with random layout";
+      board.status_txt = READY_STATUS;
       console.log("resetting board");
       board.tiles = make_tiles();
       board.score = 0;
@@ -271,15 +277,28 @@ function setup_events(board) {
       update_from_selection(board, cheatMode);
     }
   };
+  function onKey (evt) {
+    switch (evt.code) {
+      case "Space":
+        console.log("space");
+        tileSet = (tileSet === N_TILE_SETS - 1) ? 0 : tileSet + 1;
+        draw_board(board);
+        break;
+      case x:
+        console.log(x);
+        break;
+    }
+  };
   const canvas = document.querySelector("canvas");
   canvas.addEventListener("mousedown", onMouseDown);
+  document.addEventListener("keypress", onKey);
 };
 
 const board = {
+  "renderer": renderer,
   "tiles": make_tiles(),
-  "images": load_tile_images(),
   "score": 0,
-  "status_txt": "Reload to generate a new board with random layout"
+  "status_txt": READY_STATUS
 };
 setup_events(board);
 draw_board(board);
