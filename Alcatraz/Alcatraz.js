@@ -7,9 +7,10 @@
   */
 
 function start_game(levels) {
-const TIMER_INTERVAL = 4; // yes this works!
-const MAX_VELOCITY = 6; // calibrated to timer
-const INITIAL_VELOCITY = 2;
+// this is arbitrarily scaled
+const TIME_FACTOR = 10;
+const MAX_VELOCITY = 16;
+const INITIAL_VELOCITY = 4;
 const BORDER = 10;
 const BOTTOM = 100;
 const BRICK_BORDER = 2;
@@ -225,6 +226,17 @@ function get_velocity(state) {
   return get_vector_length(state.ball_vector_x, state.ball_vector_y);
 };
 
+function distance_to_edge(state, edge) {
+  const x0 = state.ball_x;
+  const y0 = state.ball_y;
+  const x1 = edge[0][0];
+  const x2 = edge[1][0];
+  const y1 = edge[0][1];
+  const y2 = edge[1][1];
+  return (Math.abs((x2 - x1)*(y1 - y0) - (x1 - x0)*(y2 - y1)) /
+          Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)));
+};
+
 function is_in_range(state, edge) {
   const radius = state.level.ball_radius;
   const velocity = get_velocity(state);
@@ -268,7 +280,7 @@ function get_intersection(state, edge) {
       const dxy1 = get_line_length(xy1, [x, y]);
       const dxy2 = get_line_length(xy2, [x, y]);
       if (dxy2 < dxy1) {
-        return [x, y];
+        return {"xy": [x, y], "distance": dxy1};
       }
     }
   }
@@ -281,20 +293,21 @@ function get_reflected_angle(theta_edge, theta_ball) {
   const new_theta = Math.PI - dtheta;
   //const new_theta_abs = theta_edge + new_theta;
   const new_theta_abs = theta_edge + (Math.PI - ((Math.PI + theta_ball) - theta_edge))
+  /*
   console.log("theta_ball:", degrees(theta_ball),
               "theta_edge:", degrees(theta_edge),
               "dtheta:", degrees(dtheta),
               "new_theta:", degrees(new_theta),
               "abs(new_theta):", degrees(new_theta_abs));
+  */
   return new_theta_abs;
 };
 
-function compute_bounce_vector(state, edge, intersect, velocity) {
+function compute_bounce_vector(state, xy_start, edge, intersect, velocity) {
   console.log("BOUNCE");
-  console.log("pos:", state.ball_x, state.ball_y);
-  const xy_ball = [state.ball_x, state.ball_y];
+  console.log("pos:", xy_start); //state.ball_x, state.ball_y);
   const xy_edge = edge[0];
-  const theta_ball = get_slope_angle(xy_ball, intersect);
+  const theta_ball = get_slope_angle(xy_start, intersect);
   const theta_edge = get_slope_angle(xy_edge, intersect);
   const new_theta = get_reflected_angle(theta_edge, theta_ball);
   const vlen = get_vector_length(state.ball_vector_x, state.ball_vector_y);
@@ -303,10 +316,10 @@ function compute_bounce_vector(state, edge, intersect, velocity) {
   // FIXME this needs to be angle-constrained, instead of letting the ball
   // completely reverse course
   if (velocity !== undefined) {
-    console.log(dx, velocity);
-    dx += velocity;
+    const velScaled = (velocity !== 0) ? Math.sqrt(Math.abs(velocity)) : 0;
+    dx += (velocity >= 0) ? velScaled : -velScaled;
   }
-  dx = Math.min(dx, MAX_VELOCITY);
+  dx = (dx >= 0) ? Math.min(dx, MAX_VELOCITY) : Math.max(dx, -MAX_VELOCITY);
   const dy_scaled = Math.abs(dx*Math.tan(0.1744));
   dy = (dy < 0) ? Math.min(dy, -dy_scaled) : Math.max(dy, dy_scaled);
   state.ball_vector_x = dx;
@@ -314,14 +327,26 @@ function compute_bounce_vector(state, edge, intersect, velocity) {
   console.log("vec:", state.ball_vector_x, state.ball_vector_y);
 };
 
-function detect_edge_collision(state, edge, velocity) {
-  if (is_in_range(state, edge)) {
-    const xy = get_intersection(state, edge);
-    if (xy != null) {
-      compute_bounce_vector(state, edge, xy, velocity);
-      return true;
+function detect_edge_collision(state, edge) {
+  const distance = distance_to_edge(state, edge);
+  const radius = state.level.ball_radius;
+  const velocity = get_velocity(state);
+  const inRange = distance <= radius + velocity;
+  if (inRange) {
+    const intersection = get_intersection(state, edge);
+    if (intersection != null) {
+      return {
+        "edge": edge,
+        "xy": intersection.xy,
+        "distance": distance,
+        "brick_idx": null, // booo
+        "is_paddle": false
+      }
+      //compute_bounce_vector(state, edge, xy, velocity);
+      //return true;
     }
   }
+  return null;
 };
 
 function detect_brick_collision(state, brick_idx) {
@@ -333,7 +358,7 @@ function detect_brick_collision(state, brick_idx) {
   // crude optimization
   if (state.ball_x < x1 - 50 || state.ball_x > x2 + 50 ||
       state.ball_y < y1 - 50 || state.ball_y > y2 + 50) {
-    return false;
+    return [];
   }
   const edges = [
     [[x1, y1], [x2, y1]],
@@ -341,16 +366,19 @@ function detect_brick_collision(state, brick_idx) {
     [[x1, y1], [x1, y2]],
     [[x2, y1], [x2, y2]]
   ];
+  const collisions = [];
   for (let i = 0; i < edges.length; i++) {
-    if (detect_edge_collision(state, edges[i])) {
-      return true;
+    const coll = detect_edge_collision(state, edges[i]);
+    if (coll !== null) {
+      coll.brick_idx = brick_idx;
+      collisions.push(coll);
     }
   }
-  return false;
+  return collisions;
 };
 
 function collect_brick(state, brick_idx) {
-  console.log("POP:", brick_idx);
+  //console.log("POP:", brick_idx);
   state.bricks[brick_idx] = false;
   state.brick_lifetimes[brick_idx] = 20;
   state.current_score += state.current_run + 1;
@@ -358,8 +386,34 @@ function collect_brick(state, brick_idx) {
   state.bricks_remaining--;
 };
 
-function detect_collisions(state) {
+function get_collisions(state) {
+  const collisions = [];
+  const paddle = get_paddle_edges(state);
+  for (let i = 0; i < 1; i++) {
+    const coll = detect_edge_collision(state, paddle[i]);
+    if (coll !== null) {
+      coll.is_paddle = true;
+      collisions.push(coll);
+    }
+  }
+  for (let i = 0; i < WALLS.length; i++) {
+    const coll = detect_edge_collision(state, WALLS[i]);
+    if (coll !== null) {
+      collisions.push(coll);
+    }
+  }
+  for (let i = 0; i < state.level.bricks.length; i++) {
+    if (state.bricks[i] === true) {
+      const brickCollisions = detect_brick_collision(state, i);
+      collisions.push.apply(collisions, brickCollisions);
+    }
+  }
+  return collisions;
+};
+
+function update_state(state, dt) {
   const radius = state.level.ball_radius;
+  const velocity = get_velocity(state);
   if (state.ball_y < BOTTOM + radius - 2) {
     state.failed = true;
     return false;
@@ -372,28 +426,37 @@ function detect_collisions(state) {
       state.ball_x = MIN_X + state.level.ball_radius + 2;
     }
   }
-  const edges = get_paddle_edges(state);
-  for (let i = 0; i < 1; i++) {
-    if (detect_edge_collision(state, edges[i], state.paddle_dx)) {
-      state.current_run = 0;
+  function step(delta) {
+    state.ball_x += state.ball_vector_x * delta;
+    state.ball_y += state.ball_vector_y * delta;
+  };
+  let deltaCurrent = dt / TIME_FACTOR;
+  const dxyzStep = deltaCurrent * velocity;
+  collisions = get_collisions(state);
+  let scored = false;
+  if (collisions.length > 0) {
+    const closest = collisions.sort((a, b) => a.distance - b.distance)[0];
+    console.log(closest.distance);
+    const bounceDistance = Math.min(closest.distance,
+      Math.max(radius, closest.distance - radius));
+    const deltaRatio = bounceDistance / dxyzStep;
+    const xy_start = [state.ball_x, state.ball_y];
+    //step(deltaRatio);
+    //deltaCurrent -= deltaRatio;
+    let edge_velocity = null;
+    if (closest.is_paddle) {
+      edge_velocity = state.paddle_dx;
+    }
+    compute_bounce_vector(state, xy_start, closest.edge, closest.xy, edge_velocity);
+    if (closest.brick_idx !== null) {
+      collect_brick(state, closest.brick_idx);
+      scored = true;
     }
   }
-  for (let i = 0; i < WALLS.length; i++) {
-    detect_edge_collision(state, WALLS[i]);
+  if (deltaCurrent > 0) {
+    step(deltaCurrent);
   }
-  for (let i = 0; i < state.level.bricks.length; i++) {
-    if (state.bricks[i] === true) {
-      if (detect_brick_collision(state, i)) {
-        collect_brick(state, i);
-      }
-    }
-  }
-};
-
-function update_state(state) {
-  detect_collisions(state);
-  state.ball_x += state.ball_vector_x;
-  state.ball_y += state.ball_vector_y;
+  return scored;
 };
 
 function on_mouse_move(state, x, y) {
@@ -421,29 +484,9 @@ function setup_events(game) {
     }
   };
 
-  function onTimer(evt) {
-    let gameOver = false;
-    if (game.state.failed) {
-      if (game.balls > 0) {
-        game.balls--;
-        game.state = initialize_state(levels[game.level_id]);
-        game.ready = true;
-      } else {
-        gameOver = true;
-      }
-    } else if (!game.paused && !game.ready) {
-      update_state(game.state);
-      if (game.state.bricks_remaining === 0) {
-        next_level(game);
-      }
-    }
-    return draw(game, gameOver);
-  };
-
-  function onKey(evt) {
+  function onKeyUp(evt) {
     switch (evt.code) {
       case "Space":
-        console.log("pausing");
         if (game.paused === true || game.ready === true) {
           game.paused = false;
           game.ready = false;
@@ -453,12 +496,40 @@ function setup_events(game) {
         break;
     }
   };
-
   const canvas = document.querySelector("canvas");
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mouseout", onMouseOut);
-  window.addEventListener("keypress", onKey);
-  window.setInterval(onTimer, TIMER_INTERVAL);
+  window.addEventListener("keyup", onKeyUp);
+
+  let gameOver = false;
+  let lastTime = Date.now();
+  function gameLoop () {
+    const now = Date.now();
+    const dt = (now - lastTime);
+    lastTime = now;
+    if (game.state.failed) {
+      if (game.balls > 0) {
+        game.balls--;
+        game.state = initialize_state(levels[game.level_id]);
+        game.ready = true;
+      } else {
+        gameOver = true;
+      }
+    } else if (!game.paused && !game.ready) {
+      const scored = update_state(game.state, dt);
+      /* XXX This is useful for debugging
+      if (scored) {
+        game.paused = true;
+      }
+      */
+      if (game.state.bricks_remaining === 0) {
+        next_level(game);
+      }
+    }
+    draw(game, gameOver);
+    requestAnimationFrame(gameLoop);
+  };
+  gameLoop();
 };
 
 function initialize_state(level) {
