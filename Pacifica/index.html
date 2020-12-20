@@ -34,10 +34,12 @@ window.onload = function () {
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const imageSize = canvasWidth / 16;
-  make_board(get_layout(), imageSize, renderer(imageSize));
+  const renderer = new Renderer(imageSize);
+  make_board(get_layout(), imageSize, renderer);
 }
 </script>
 <p><font class="note">All source code and backgrounds are my original work, but I do not own the copyright to all of the tile images.</font></p>
+<p><font class="note"><a href="editor.html">Prototype Unicode tile editor</a></font></p>
 </center>
 </body>
 </html>
