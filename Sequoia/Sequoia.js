@@ -35,6 +35,11 @@ const LABEL_POSITIONS = [
 const WIDTH_REF = 1600;
 const FONT_SCALE = width / 1600;
 const SUITS = ["\u2660", "\u2665", "\u2666", "\u2663"];
+const FACE_CARDS = [
+  ["\u{1F0AB}", "\u{1F0BB}", "\u{1F0CB}", "\u{1F0DB}"],
+  ["\u{1F0AD}", "\u{1F0BD}", "\u{1F0CD}", "\u{1F0DD}"],
+  ["\u{1F0AE}", "\u{1F0BE}", "\u{1F0CE}", "\u{1F0DE}"]
+];
 const COLORS = ["#000000", "#ff0000", "#ff0000", "#000000"];
 // this includes padding around the card
 const BOARD_CENTER = width * 0.5;
@@ -134,7 +139,12 @@ function draw_card_center(ctx, card) {
                    card.x + CARD_WIDTH*xy[0],
                    card.y + 10 + CARD_HEIGHT*xy[1]);
     }
-  } else {
+  } else if (card.value >= 10) {
+    const pts = Math.floor(120 * FONT_SCALE);
+    ctx.font = `${pts}pt Monaco`;
+    const charCode = FACE_CARDS[card.value-10][card.suit];
+    ctx.fillText(charCode, card.x + CARD_WIDTH/2, card.y + CARD_HEIGHT / 2);
+  } else { // XXX this is dead code now?
     const pts = Math.floor(48 * FONT_SCALE);
     ctx.font = `${pts}pt Gill Sans`;
     ctx.fillText(`${LABELS[card.value]} ${SUITS[card.suit]}`,
