@@ -25,6 +25,11 @@ const SELECTED_HIGHLIGHT = 'rgba(0, 0, 0, 0.5)'
 const SELECTED_LAYER_HIGHLIGHT = "#000000";
 const READY_STATUS = "Reload to generate a new board with random layout; space key switches tile set";
 
+function get_layer_border(layer) {
+  const shade = 64 + (layer * 160);
+  return `rgb(${shade}, ${shade}, ${shade})`;
+};
+
 function to_screen_pos(n, layer, border) {
   const offset = layer * OFFSET_3D;
   return (border * tileSize) + (n * tileSize) - offset;
@@ -52,13 +57,12 @@ function fisher_yates_shuffle (arr) {
     arr[j] = arr[i];
     arr[i] = tmpJ;
   }
-  console.log(arr);
   return arr;
 };
 
 function make_tiles () {
   let nTiles = layout.map((l) => l.length).reduce((a, b) => a + b);
-  console.assert(nTiles % 2 == 0, `nTiles=${nTiles}, must be even`);
+  console.assert(nTiles === 144, `Expected 144 tiles, got ${nTiles}`);
   const tileIds = [];
   let tileId = 0;
   for (let i = 0; i < nTiles / 2; i++) {

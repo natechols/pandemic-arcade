@@ -1,5 +1,5 @@
 
-function get_layout() {
+function get_layouts() {
 
 function to_row(a, j) {
   return a.map((i) => [i, j]);
@@ -13,7 +13,9 @@ const TEST_LAYOUT = [
 ];
 
 // https://en.wikipedia.org/wiki/Mahjong_solitaire
-const TURTLE = [
+const TURTLE = {
+  "name": "Turtle",
+  "tiles": [
   // bottom layer
   // the order of rows is important here to avoid edge overlap artifacts
   [
@@ -49,10 +51,13 @@ const TURTLE = [
   [
     [6.5, 3.5]
   ]
-];
+]
+};
 
 // https://www.youtube.com/watch?v=7ASKJIFVK2A
-const MOMBASA = [
+const MOMBASA = {
+  "name": "Mombasa",
+  "tiles": [
   [
     ...to_row([1.5, 2.5, 6, 7, 8, 9, 10, 11], 0),
     ...to_row([1, 2, 3, 6, 7, 8, 9, 10, 11], 1),
@@ -89,7 +94,109 @@ const MOMBASA = [
     ...to_row([8, 9], 2),
     ...to_row([4, 5], 5)
   ]
-];
+]
+};
 
-return [TURTLE, MOMBASA][Math.floor(Math.random() * 1.5)];
+// https://home.halden.net/vkp/vkp/layouts.html
+const ARENA = {
+  "name": "Arena",
+  "tiles": [
+  [
+    ...to_row([1,2,3,4,5,9,10,11,12,13], 1),
+    ...to_row([1,2,3,4,6,7,8,10,11,12,13], 2),
+    ...to_row([1,2,3,7,11,12,13], 3),
+    ...to_row([1,2,6,7,8,12,13], 4),
+    ...to_row([1,2,3,7,11,12,13], 5),
+    ...to_row([1,2,3,4,6,7,8,10,11,12,13], 6),
+    ...to_row([1,2,3,4,5,9,10,11,12,13], 7)
+  ],
+  [
+    ...to_row([1,2,3,4,10,11,12,13], 1),
+    ...to_row([1,2,3,7,11,12,13], 2),
+    ...to_row([1,2,12,13], 3),
+    ...to_row([1,7,13], 4),
+    ...to_row([1,2,12,13], 5),
+    ...to_row([1,2,3,7,11,12,13], 6),
+    ...to_row([1,2,3,4,10,11,12,13], 7)
+  ],
+  [
+    ...to_row([1,2,3,11,12,13], 1),
+    ...to_row([1,2,12,13], 2),
+    ...to_row([1,13], 3),
+    ...to_row([1,13], 5),
+    ...to_row([1,2,12,13], 6),
+    ...to_row([1,2,3,11,12,13], 7)
+  ],
+  [
+    ...to_row([1,2,12,13], 1),
+    ...to_row([1,13], 2),
+    ...to_row([1,13], 6),
+    ...to_row([1,2,12,13], 7)
+  ],
+  [
+    ...to_row([1,13], 1),
+    ...to_row([1,13], 7)
+  ]
+]
+};
+
+// https://www.macintoshrepository.org/3730-mombasa
+const MOMBASA2 = {
+  "name": "Mombasa 2",
+  "tiles": [
+  [
+    ...to_row([0,4,5,6,7,8,9,13], 0),
+    ...to_row([1, 12], 0.5),
+    ...to_row([0,4,5,6,7,8,9,13], 1),
+    ...to_row([1,12], 1.5),
+    ...to_row([0,4,5,6,7,8,9,13], 2),
+    ...to_row([1,12], 2.5),
+    ...to_row([0,6,7,13], 3),
+    ...to_row([1,12], 3.5),
+    ...to_row([0,5.5,6.5,7.5,13], 4),
+    ...to_row([1,12], 4.5),
+    ...to_row([0,6,7,13], 5),
+    ...to_row([1,12], 5.5),
+    ...to_row([0,5.5,6.5,7.5,13], 6),
+    ...to_row([1,12], 6.5),
+    ...to_row([0,6,7,13], 7)
+  ],
+  [
+    ...to_row([0,13], 0),
+    ...to_row([0, 1, 4.5,8.5, 12, 13], 1),
+    ...to_row([5.5,6.5,7.5], 0.5),
+    ...to_row([5.5,6.5,7.5], 1.5),
+    ...to_row([0,1,12,13], 2),
+    ...to_row([0,1,12,13], 3),
+    ...to_row([0,1,12,13], 4),
+    ...to_row([0,1,12,13], 5),
+    ...to_row([0,1,12,13], 6),
+    ...to_row([0,13], 7),
+  ],
+  [
+    ...to_row([0,13], 0),
+    ...to_row([0, 4.5,8.5, 13], 1),
+    ...to_row([5.5,6.5,7.5], 0.5),
+    ...to_row([5.5,6.5,7.5], 1.5),
+    ...to_row([0,1,12,13], 2),
+    ...to_row([0,1,12,13], 3),
+    ...to_row([0,1,12,13], 4),
+    ...to_row([0,1,12,13], 5),
+    ...to_row([0,13], 6),
+    ...to_row([0,13], 7)
+  ],
+  [
+    ...to_row([0,13], 0),
+    ...to_row([0,13], 1),
+    ...to_row([0,13], 2),
+    ...to_row([0,13], 3),
+    ...to_row([0,13], 4),
+    ...to_row([0,13], 5),
+    ...to_row([0,13], 6),
+    ...to_row([0,13], 7)
+  ]
+]
+};
+
+return [TURTLE, ARENA, MOMBASA, MOMBASA2];
 };

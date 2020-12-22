@@ -17,6 +17,18 @@ canvas {
 <body>
 <center>
 <canvas>Game Board</canvas>
+<form id="game-controls">
+<p>Layout: 
+<select id="select-layout" width="120" style="width: 120px;">
+  <option>Random</option>
+  <option>Turtle</option>
+  <option>Arena</option>
+  <option>Mombasa</option>
+  <option>Mombasa 2</option>
+</select>
+<input type="submit" id="submit-button" value="New Board"/>
+</form>
+</p>
 <script language="JavaScript">
 // preload images
 const numImages = 36;
@@ -35,7 +47,27 @@ window.onload = function () {
   canvas.height = canvasHeight;
   const imageSize = canvasWidth / 16;
   const renderer = new Renderer(imageSize);
-  make_board(get_layout(), imageSize, renderer);
+  const layouts = get_layouts();
+  const selCtrl = document.getElementById("select-layout");
+  function random_layout() {
+    return layouts[Math.floor(Math.random()*layouts.length)];
+  };
+  function onSelect(evt) {
+    if (evt !== null && evt.preventDefault !== undefined) evt.preventDefault();
+    const idx = selCtrl.selectedIndex;
+    const layout = (idx === 0) ? random_layout() : layouts[idx - 1];
+    make_board(layout.tiles, imageSize, renderer);
+    return false;
+  };
+  const form = document.getElementById('game-controls');
+  if (form.attachEvent) {
+    form.attachEvent("submit", onSelect);
+  } else {
+    form.addEventListener("submit", onSelect);
+  }
+  selCtrl.addEventListener("onchange", onSelect);
+  onSelect(null);
+  //make_board(layout.tiles, imageSize, renderer);
 }
 </script>
 <p><font class="note">All source code and backgrounds are my original work, but I do not own the copyright to all of the tile images.</font></p>
