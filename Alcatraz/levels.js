@@ -31,7 +31,7 @@ function get_levels() {
     }
     return {
       "paddle_width": 0.4,
-      "ball_radius": 16,
+      "ball_radius": 8,
       "bricks": bricks,
       "brick_colors": make_rainbow_colors(bricks)
     };
@@ -48,7 +48,7 @@ function get_levels() {
     }
     return {
       "paddle_width": 0.3,
-      "ball_radius": 12,
+      "ball_radius": 6,
       "bricks": bricks,
       "brick_colors": make_rainbow_colors(bricks)
     };
@@ -67,7 +67,7 @@ function get_levels() {
     }
     return {
       "paddle_width": 0.25,
-      "ball_radius": 10,
+      "ball_radius": 5,
       "bricks": bricks,
       "brick_colors": brick_colors
     };
