@@ -371,7 +371,7 @@ function new_random_enemy(w, h, player, type_id) {
   const angle = Math.random() * (Math.PI * 2);
   const direction = new Vector(Math.cos(angle), Math.sin(angle));
   // enemies always arrive from the top of the screen
-  let pos = new Point(Math.random() * w, h); //Math.random() * h);
+  let pos = new Point(Math.random() * w, h - 80); //Math.random() * h);
   // this avoids crashing into the player immediately
   while (pos.distance(player.position) < 400) {
     pos = new Point(Math.random() * w, Math.random() * h);
