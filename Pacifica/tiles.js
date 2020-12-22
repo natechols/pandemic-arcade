@@ -2,7 +2,8 @@ const CALIFORNIA = 0;
 const FLAGS = 1;
 const MAHJONG = 2;
 const EMOJI = 3;
-const LABELS = ["California", "Flags", "Mahjong", "Emoji"];
+const CUSTOM = 4;
+const LABELS = ["California", "Flags", "Mahjong", "Emoji", "Custom"];
 
 const MAHJONG_CODES = [
   "1F000", // east wind
@@ -146,11 +147,13 @@ function Renderer(tileSize) {
     images.push(tileImg);
   }
 
+  const customTiles = EMOJI_CODES.map((x) => x);
   const TILE_CODES = [
     null,
     FLAG_CODES,
     MAHJONG_CODES,
-    EMOJI_CODES
+    EMOJI_CODES,
+    customTiles
   ];
 
   function draw_white_bg(ctx, x, y) {
@@ -222,6 +225,9 @@ function Renderer(tileSize) {
       case EMOJI:
         render_unicode(ctx, x, y, tileId, to_char_code(EMOJI_CODES[tileId]), 0.67);
         break;
+      case CUSTOM:
+        render_unicode(ctx, x, y, tileId, to_char_code(customTiles[tileId]), 0.67);
+        break;
     }
   };
   this.set_tile = function (tileId, value) {
@@ -249,5 +255,67 @@ function Renderer(tileSize) {
     }
     return this.tileSet;
   };
+  this.get_custom_tiles = function () {
+    return customTiles;
+  };
+  this.apply_edits = function (tileCodes) {
+    for (i = 0; i < 36; i++) {
+      customTiles[i] = tileCodes[i];
+    }
+    if (this.tileSet !== CUSTOM) {
+      this.tileSet = CUSTOM;
+    }
+  };
   return this;
+};
+
+function make_editor_table(tileSize, renderer) {
+  function handle_change(tileId, tileInput, tileCanvas) {
+    renderer.set_tile(tileId, tileInput);
+    render_custom_tile(tileCanvas, tileId, renderer);
+  };
+  const table = document.getElementById("tiles-table");
+  for (let i = 0; i < 4; i++) {
+    const row = table.insertRow();
+    for (let j = 0; j < 9; j++) {
+      const tileId = (i * 9) + j;
+      const cell = row.insertCell();
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = tileSize;
+      canvas.id = `tile-${tileId+1}`;
+      cell.appendChild(canvas);
+      const br = document.createElement("br");
+      cell.appendChild(br);
+      const input = document.createElement("input");
+      input.class = "code-input";
+      input.size = 12;
+      input.width = 100;
+      input.height = 20;
+      input.style = "background: #303030; color: yellow; text-align: center; font: 9pt Monaco; border-style: solid; border-color: #80b030; border-width: 1px";
+      input.id = `code-${tileId+1}`;
+      cell.appendChild(input);
+      function onChange(evt) {
+        const value = input.value;
+        handle_change(tileId, value, canvas);
+      };
+      input.onchange = onChange;
+      input.addEventListener("onchange", onChange);
+      input.addEventListener("onblur", onChange);
+    }
+  }
+};
+
+function render_custom_tile(canvas, tileId, renderer) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  renderer.render_tile(ctx, 0, 0, tileId);
+};
+
+function load_tile_set(renderer) {
+  for (let i = 0; i < 36; i++) {
+    const canvas = document.getElementById(`tile-${i+1}`);
+    render_custom_tile(canvas, i, renderer);
+    const inp = document.getElementById(`code-${i+1}`);
+    inp.value = renderer.get_code(i);
+  }
 };

@@ -23,7 +23,6 @@ const TILE_BORDER = "#000000";
 const LAYER_BORDERS = ["#404040", "#606060", "#808080", "#b0b0b0", "#e0e0e0"];
 const SELECTED_HIGHLIGHT = 'rgba(0, 0, 0, 0.5)'
 const SELECTED_LAYER_HIGHLIGHT = "#000000";
-const READY_STATUS = "Reload to generate a new board with random layout; space key switches tile set";
 
 function get_layer_border(layer) {
   const shade = 64 + (layer * 160);
@@ -146,8 +145,8 @@ function draw_board (board) {
   ctx.font = "24px Futura";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${board.score}`, 10, 30);
-  ctx.textAlign = "right";
-  ctx.fillText(board.status_txt, canvas.width - 10, 30);
+  //ctx.textAlign = "right";
+  //ctx.fillText(board.status_txt, canvas.width - 10, 30);
   ctx.stroke();
   ctx.restore();
   board.tiles.forEach(function (tile) {
@@ -262,7 +261,6 @@ function update_from_selection(board, cheatMode) {
 function setup_events(board) {
   function onMouseDown (evt) {
     if (board.score === board.tiles.length) {
-      board.status_txt = READY_STATUS;
       console.log("resetting board");
       board.tiles = make_tiles();
       board.score = 0;
@@ -279,29 +277,17 @@ function setup_events(board) {
       update_from_selection(board, cheatMode);
     }
   };
-  function onKey (evt) {
-    switch (evt.code) {
-      case "Space":
-        console.log("space");
-        renderer.next_tile_set();
-        draw_board(board);
-        break;
-      case x:
-        console.log(x);
-        break;
-    }
-  };
   const canvas = document.querySelector("canvas");
   canvas.addEventListener("mousedown", onMouseDown);
-  document.addEventListener("keypress", onKey);
 };
 
 const board = {
   "renderer": renderer,
   "tiles": make_tiles(),
   "score": 0,
-  "status_txt": READY_STATUS
+  "status_txt": ""
 };
 setup_events(board);
 draw_board(board);
+return () => draw_board(board);
 };
