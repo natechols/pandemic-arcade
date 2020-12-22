@@ -1,8 +1,9 @@
 const CALIFORNIA = 0;
 const FLAGS = 1;
 const MAHJONG = 2;
-const CUSTOM = 3;
-const LABELS = ["California", "Flags", "Mahjong", "Custom"];
+const EMOJI = 3;
+const CUSTOM = 4;
+const LABELS = ["California", "Flags", "Mahjong", "Emoji", "Custom"];
 
 const MAHJONG_CODES = [
   "1F000", // east wind
@@ -99,6 +100,45 @@ const FLAG_CODES = [
   "1F1FF 1F1E6", // South Africa
 ];
 
+const EMOJI_CODES = [
+  "D83E DD86", // duck
+  "D83E DD9A", // peacock
+  "D83E DD9C", // parrot
+  "D83E DD89", // owl
+  "D83E DD83", // turkey
+  "D83D DC14", // chicken
+  "D83D DC16", // pig
+  "D83D DC08", // cat
+  "D83D DC07", // rabbit
+  "D83D DC01", // mouse
+  "D83D DC12", // monkey
+  "D83E DD81", // lion
+  "D83D DC0E", // horse
+  "D83D DC22", // turtle
+  "D83D DC0D", // snake
+  "D83D DC0A", // crocodile
+  "D83E DD88", // shark
+  "D83D DC19", // octopus
+  "D83D DC1F", // fish
+  "D83D DC0B", // whale
+  "D83D DC1A", // spiral shell
+  "D83D DC38", // frog
+  "D83E DD8B", // butterfly
+  "D83D DC1E", // ladybug
+  "D83D DC1D", // honeybee
+  "D83D DC0C", // snail
+  "D83D DC1C", // ant
+  "D83C DF35", // cactus
+  "D83C DF32", // evergreen tree
+  "D83C DF33", // deciduous tree
+  "D83C DF41", // maple leaf
+  "D83C DF34", // palm tree
+  "D83C DF39", // rose
+  "D83C DF3B", // sunflower
+  "D83C DF37", // tulip
+  "D83C DF3C"  // blossom
+];
+
 function Renderer(tileSize) {
   const images = [];
   for (let i = 1; i <= 36; i++) {
@@ -107,10 +147,13 @@ function Renderer(tileSize) {
     images.push(tileImg);
   }
 
+  const customTiles = EMOJI_CODES.map((x) => x);
   const TILE_CODES = [
     null,
     FLAG_CODES,
-    MAHJONG_CODES
+    MAHJONG_CODES,
+    EMOJI_CODES,
+    customTiles
   ];
 
   function draw_white_bg(ctx, x, y) {
@@ -120,35 +163,32 @@ function Renderer(tileSize) {
     ctx.restore();
   };
 
-  function render_flag(ctx, x, y, tileId) {
+  function render_unicode(ctx, x, y, tileId, charString, fontScale, color) {
     draw_white_bg(ctx, x, y);
     ctx.save();
-    const fontSize = Math.max(24, Math.floor(tileSize * 0.67));
+    const fontSize = Math.max(24, Math.floor(tileSize * fontScale));
     ctx.font = `${fontSize}pt Monaco`;
     ctx.beginPath();
     ctx.textAlign = "center";
     ctx.textBaseline = "hanging";
-    const charString = to_char_code(FLAG_CODES[tileId]);
+    if (color !== undefined) {
+      ctx.fillStyle = MAHJONG_COLORS[tileId];
+    }
     ctx.fillText(charString, x+tileSize/2, y+tileSize/8);
     ctx.closePath();
     ctx.stroke();
     ctx.restore();
   };
 
+  function render_flag(ctx, x, y, tileId) {
+    const charString = to_char_code(FLAG_CODES[tileId]);
+    render_unicode(ctx, x, y, tileId, charString, 0.67);
+  };
+
   function render_mahjong(ctx, x, y, tileId) {
-    draw_white_bg(ctx, x, y);
-    ctx.save();
-    const fontSize = Math.max(24, Math.floor(tileSize * 0.5));
-    ctx.font = `${fontSize}pt Monaco`;
-    ctx.beginPath();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "hanging";
-    ctx.fillStyle = MAHJONG_COLORS[tileId];
     const charString = to_char_code(MAHJONG_CODES[tileId]);
-    ctx.fillText(charString, x+tileSize/2, y+tileSize/8);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
+    const color = MAHJONG_COLORS[tileId];
+    render_unicode(ctx, x, y, tileId, charString, 0.5, color);
   };
 
   function render_image(ctx, x, y, tileId) {
@@ -182,6 +222,12 @@ function Renderer(tileSize) {
       case FLAGS:
         render_flag(ctx, x, y, tileId);
         break;
+      case EMOJI:
+        render_unicode(ctx, x, y, tileId, to_char_code(EMOJI_CODES[tileId]), 0.67);
+        break;
+      case CUSTOM:
+        render_unicode(ctx, x, y, tileId, to_char_code(customTiles[tileId]), 0.67);
+        break;
     }
   };
   this.set_tile = function (tileId, value) {
@@ -199,7 +245,6 @@ function Renderer(tileSize) {
     if (TILE_CODES[this.tileSet] === null) {
       return "";
     } else {
-      //console.log(TILE_CODES[this.tileSet]);
       return TILE_CODES[this.tileSet][tileId];
     }
   };
@@ -210,5 +255,67 @@ function Renderer(tileSize) {
     }
     return this.tileSet;
   };
+  this.get_custom_tiles = function () {
+    return customTiles;
+  };
+  this.apply_edits = function (tileCodes) {
+    for (i = 0; i < 36; i++) {
+      customTiles[i] = tileCodes[i];
+    }
+    if (this.tileSet !== CUSTOM) {
+      this.tileSet = CUSTOM;
+    }
+  };
   return this;
+};
+
+function make_editor_table(tileSize, renderer) {
+  function handle_change(tileId, tileInput, tileCanvas) {
+    renderer.set_tile(tileId, tileInput);
+    render_custom_tile(tileCanvas, tileId, renderer);
+  };
+  const table = document.getElementById("tiles-table");
+  for (let i = 0; i < 4; i++) {
+    const row = table.insertRow();
+    for (let j = 0; j < 9; j++) {
+      const tileId = (i * 9) + j;
+      const cell = row.insertCell();
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = tileSize;
+      canvas.id = `tile-${tileId+1}`;
+      cell.appendChild(canvas);
+      const br = document.createElement("br");
+      cell.appendChild(br);
+      const input = document.createElement("input");
+      input.class = "code-input";
+      input.size = 12;
+      input.width = 100;
+      input.height = 20;
+      input.style = "background: #303030; color: yellow; text-align: center; font: 9pt Monaco; border-style: solid; border-color: #80b030; border-width: 1px";
+      input.id = `code-${tileId+1}`;
+      cell.appendChild(input);
+      function onChange(evt) {
+        const value = input.value;
+        handle_change(tileId, value, canvas);
+      };
+      input.onchange = onChange;
+      input.addEventListener("onchange", onChange);
+      input.addEventListener("onblur", onChange);
+    }
+  }
+};
+
+function render_custom_tile(canvas, tileId, renderer) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  renderer.render_tile(ctx, 0, 0, tileId);
+};
+
+function load_tile_set(renderer) {
+  for (let i = 0; i < 36; i++) {
+    const canvas = document.getElementById(`tile-${i+1}`);
+    render_custom_tile(canvas, i, renderer);
+    const inp = document.getElementById(`code-${i+1}`);
+    inp.value = renderer.get_code(i);
+  }
 };

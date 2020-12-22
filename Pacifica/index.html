@@ -9,16 +9,82 @@
 <script src="layouts.js" language="JavaScript"></script>
 <script src="tiles.js" language="JavaScript"></script>
 <style>
-canvas {
+canvas.game-board {
   background-image: url('../images/bg0.jpeg');
+}
+canvas.tile-view {
+  background: white;
+  padding: 4px;
+}
+table {
+  border: 0px;
+  border-color: #d0d0a0;
+  border-width: 0px;
+  border-spacing: 0px;
+}
+tr {
+  border: 0px;
+  border-color: #d0d0a0;
+  border-spacing: 1px;
+}
+td {
+  text-align: center;
+  padding: 8px;
+  border-spacing: 1px;
+  border: 0px;
+  background: black;
+}
+td.bg-table {
+  background: #80b030;
+  padding: 0px;
+  border: 0px;
+}
+table#tiles-table {
+  border-spacing: 1px;
+  border: 0px;
+  border-width: 0px;
+}
+br {
+  height: 8px;
+}
+input.code-input {
+  width: 72px;
+  text-align: center;
+  background: #000000;
+  color: #ffff00;
+  font: "11pt Monaco";
+  border-style: solid;
+  border-color: #80b030;
+  box-shadow: none;
+  border-width: 1px;
+}
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+div#tile-editor {
+  background-color: rgb(0,0,0);
+  display: inline-block;
+  padding: 4px;
+  top: 50;
 }
 </style>
 </head>
 <body>
 <center>
-<canvas>Game Board</canvas>
+<canvas class="game-board">Game Board</canvas>
+<p>
 <form id="game-controls">
-<p>Layout: 
+Layout: 
 <select id="select-layout" width="120" style="width: 120px;">
   <option>Random</option>
   <option>Turtle</option>
@@ -28,7 +94,58 @@ canvas {
 </select>
 <input type="submit" id="submit-button" value="New Board"/>
 </form>
+<form id="tile-controls">
+Tiles:
+<select id="select-tiles" width="120" style="width: 120px;">
+  <option>California</option>
+  <option>Flags</option>
+  <option>Mahjong</option>
+  <option>Nature Emoji</option>
+  <option>Custom Emoji</option>
+</select>
+<input type="submit" id="edit-button" value="Custom Tiles..."/>
+</form>
 </p>
+<div class="modal" id="modal-dialog">
+<div id="tile-editor">
+<div class="xga">
+<h4>Mahjong Tile Editor</h4>
+<p>This editor lets you view any combination of 36 displayable Unicode characters,
+including most emojis, as they would appear as game tiles.  Unicode uses hexadecimal
+notation for compactness, and many
+emojis are combinations of two different codes.  For example, the
+code for the spades playing card suit is <tt>2660</tt>, the Mahjong red dragon suit
+is <tt>1F004</tt>, an avocado image is
+<tt>1F951</tt>, and the flag of Brazil is <tt>1F1E7 1F1F7</tt>.  (Often the codes are
+preceded by <tt>U+</tt> to indicate what the hexstring is referring to, but this is
+optional in this editor and will be dealt with internally.)</p>
+<p>You can find many lists of emoji and their hexademical codes online, and I
+recommend starting at <a href="https://unicode.org/emoji/charts/">the official Unicode
+site</a>.  I haven't figured out what the version compatibility on my MacBook
+is yet, although clearly at least Unicode 6.0 is supported.</p>
+</div>
+<form id="edit-controls">
+<table id="outer-table">
+<tr class="bg-table">
+<td class="bg-table">
+<table id="tiles-table">
+<script language="JavaScript">
+window.onload = function () {
+  const tileSize = 72
+  const renderer = new Renderer(tileSize);
+  make_table(tileSize, renderer);
+  load_tile_set(renderer, 3);
+};
+</script>
+</table>
+</td></tr></table>
+<p>
+<input type="button" value="Cancel" id="cancel-button"/>
+<input type="submit" value="Save and Close" id="save-button"/>
+</p>
+</form>
+</div>
+</div>
 <script language="JavaScript">
 // preload images
 const numImages = 36;
@@ -38,40 +155,104 @@ for (let i = 1; i <= numImages; i++) {
 window.onload = function () {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  console.log(`${width}x${height}`);
   const canvas = document.querySelector("canvas");
   const canvasWidth = Math.min(width - 50, 1600);
   const canvasHeight = Math.min(width / 1.6 - 80, 1000);
-  console.log(`${canvasWidth}x${canvasHeight}`);
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const imageSize = canvasWidth / 16;
   const renderer = new Renderer(imageSize);
   const layouts = get_layouts();
-  const selCtrl = document.getElementById("select-layout");
+  const layoutSelect = document.getElementById("select-layout");
+  const tileSelect = document.getElementById("select-tiles");
+  const modal = document.getElementById("modal-dialog");
+  const gameForm = document.getElementById('game-controls');
+  const tileForm = document.getElementById("tile-controls");
+  const editForm = document.getElementById("edit-controls");
+  let redrawFunc = null;
+
+  console.log("loading");
   function random_layout() {
     return layouts[Math.floor(Math.random()*layouts.length)];
   };
-  function onSelect(evt) {
+
+  function onSelectLayout(evt) {
     if (evt !== null && evt.preventDefault !== undefined) evt.preventDefault();
-    const idx = selCtrl.selectedIndex;
+    const idx = layoutSelect.selectedIndex;
     const layout = (idx === 0) ? random_layout() : layouts[idx - 1];
-    make_board(layout.tiles, imageSize, renderer);
+    redrawFunc = make_board(layout.tiles, imageSize, renderer);
     return false;
   };
-  const form = document.getElementById('game-controls');
-  if (form.attachEvent) {
-    form.attachEvent("submit", onSelect);
+
+  function onSelectTiles(evt) {
+    renderer.select_tiles(tileSelect.selectedIndex);
+    redrawFunc();
+    return false;
+  };
+
+  function onEdit(evt) {
+    modal.style.display = "block";
+    const customTiles = renderer.get_custom_tiles();
+    renderer.select_tiles(CUSTOM);
+    load_tile_set(renderer);
+    return false;
+  };
+
+  function onEditClose(evt) {
+    modal.style.display = "none";
+    return false;
+  };
+
+  function onEditSave(evt) {
+    const newTiles = [];
+    for (let i = 0; i < 36; i++) {
+      const inp = document.getElementById(`code-${i+1}`);
+      newTiles.push(inp.value);
+    }
+    renderer.apply_edits(newTiles);
+    redrawFunc();
+    return onEditClose(evt);
+  };
+
+  function onFormKey(evt) {
+    if (evt.code === "Escape") {
+      return onEditClose(evt);
+    } else {
+      return false;
+    }
+  };
+
+  layoutSelect.addEventListener("onchange", onSelectLayout);
+  layoutSelect.onchange = onSelectLayout;
+  if (gameForm.attachEvent) {
+    gameForm.attachEvent("submit", onSelectLayout);
   } else {
-    form.addEventListener("submit", onSelect);
+    gameForm.addEventListener("submit", onSelectLayout);
   }
-  selCtrl.addEventListener("onchange", onSelect);
-  onSelect(null);
-  //make_board(layout.tiles, imageSize, renderer);
+
+  tileSelect.addEventListener("onchange", onSelectTiles);
+  tileSelect.onchange = onSelectTiles;
+  if (tileForm.attachEvent) {
+    tileForm.attachEvent("submit", onSelectTiles);
+  } else {
+    tileForm.addEventListener("submit", onSelectTiles);
+  }
+  document.getElementById("edit-button").onclick = onEdit;
+
+  document.getElementById("save-button").onclick = onEditSave;
+  document.getElementById("cancel-button").onclick = onEditClose;
+  if (editForm.attachEvent) {
+    editForm.attachEvent("submit", onEditSave);
+  } else {
+    editForm.addEventListener("submit", onEditSave);
+  }
+  editForm.addEventListener("keypress", onFormKey);
+
+  make_editor_table(imageSize, renderer);
+  onSelectLayout(null);
 }
 </script>
 <p><font class="note">All source code and backgrounds are my original work, but I do not own the copyright to all of the tile images.</font></p>
-<p><font class="note"><a href="editor.html">Prototype Unicode tile editor</a></font></p>
 </center>
 </body>
 </html>
