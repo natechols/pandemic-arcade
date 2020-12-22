@@ -145,8 +145,10 @@ function draw_board (board) {
   ctx.font = "24px Futura";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${board.score}`, 10, 30);
-  //ctx.textAlign = "right";
-  //ctx.fillText(board.status_txt, canvas.width - 10, 30);
+  if (board.status_txt) {
+    ctx.textAlign = "right";
+    ctx.fillText(board.status_txt, canvas.width - 10, 30);
+  }
   ctx.stroke();
   ctx.restore();
   board.tiles.forEach(function (tile) {
