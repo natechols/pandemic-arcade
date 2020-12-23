@@ -1,9 +1,16 @@
+/** Note: to keep the rendering code as simple as possible, the ordering of
+  * tile positions is extremely important to get the correct perspective view.
+  */
 
 function get_layouts() {
 
 function to_row(a, j) {
   return a.map((i) => [i, j]);
-}
+};
+
+function to_col(a, i) {
+  return a.map((j) => [i, j]);
+};
 
 const TEST_LAYOUT = [
   [ [1, 1], [2, 1], [3, 1], [4, 1],
@@ -17,7 +24,6 @@ const TURTLE = {
   "name": "Turtle",
   "tiles": [
   // bottom layer
-  // the order of rows is important here to avoid edge overlap artifacts
   [
     ...to_row([1,2,3,4,5,6,7,8,9,10,11,12], 0),
     ...to_row([3,4,5,6,7,8,9,10], 1),
@@ -145,56 +151,51 @@ const MOMBASA2 = {
   "name": "Mombasa 2",
   "tiles": [
   [
-    ...to_row([0,4,5,6,7,8,9,13], 0),
-    ...to_row([0,4,5,6,7,8,9,13], 1),
-    ...to_row([1, 12], 0.5),
-    ...to_row([0,4,5,6,7,8,9,13], 2),
-    ...to_row([1,12], 1.5),
-    ...to_row([0,6,7,13], 3),
-    ...to_row([1,12], 2.5),
-    ...to_row([0,5.5,6.5,7.5,13], 4),
-    ...to_row([1,12], 3.5),
-    ...to_row([0,6,7,13], 5),
-    ...to_row([1,12], 4.5),
-    ...to_row([0,5.5,6.5,7.5,13], 6),
-    ...to_row([1,12], 5.5),
-    ...to_row([0,6,7,13], 7),
-    ...to_row([1,12], 6.5)
+    // left stack
+    ...to_col([0,1,2,3,4,5,6,7], 0),
+    ...to_col([0.5,1.5,2.5,3.5,4.5,5.5,6.5], 1),
+    // middle
+    ...to_row([4,5,6,7,8,9], 0),
+    ...to_row([4,5,6,7,8,9], 1),
+    ...to_row([4,5,6,7,8,9], 2),
+    ...to_row([6,7], 3),
+    ...to_row([5.5,6.5,7.5], 4),
+    ...to_row([6,7], 5),
+    ...to_row([5.5,6.5,7.5], 6),
+    ...to_row([6,7], 7),
+    // right stack
+    ...to_col([0.5,1.5,2.5,3.5,4.5,5.5,6.5], 12),
+    ...to_col([0,1,2,3,4,5,6,7], 13),
   ],
   [
-    ...to_row([0,13], 0),
+    // left stack
+    ...to_col([0,1,2,3,4,5,6,7], 0),
+    ...to_col([1,2,3,4,5,6], 1),
+    // middle
+    ...to_row([4.5], 1),
     ...to_row([5.5,6.5,7.5], 0.5),
     ...to_row([5.5,6.5,7.5], 1.5),
-    ...to_row([0,1,12,13], 2),
-    ...to_row([0, 1, 4.5,8.5, 12, 13], 1),
-    ...to_row([0,1,12,13], 3),
-    ...to_row([0,1,12,13], 4),
-    ...to_row([0,1,12,13], 5),
-    ...to_row([0,1,12,13], 6),
-    ...to_row([0,13], 7),
+    ...to_row([8.5], 1),
+    // right stack
+    ...to_col([1,2,3,4,5,6], 12),
+    ...to_col([0,1,2,3,4,5,6,7], 13)
   ],
   [
-    ...to_row([0,13], 0),
+    // left stack
+    ...to_col([0,1,2,3,4,5,6,7], 0),
+    ...to_col([2,3,4,5], 1),
+    // middle
+    ...to_row([4.5], 1),
     ...to_row([5.5,6.5,7.5], 0.5),
-    ...to_row([0, 4.5], 1),
     ...to_row([5.5,6.5,7.5], 1.5),
-    ...to_row([8.5, 13], 1),
-    ...to_row([0,1,12,13], 2),
-    ...to_row([0,1,12,13], 3),
-    ...to_row([0,1,12,13], 4),
-    ...to_row([0,1,12,13], 5),
-    ...to_row([0,13], 6),
-    ...to_row([0,13], 7)
+    ...to_row([8.5], 1),
+    // right stack
+    ...to_col([2,3,4,5], 12),
+    ...to_col([0,1,2,3,4,5,6,7], 13)
   ],
   [
-    ...to_row([0,13], 0),
-    ...to_row([0,13], 1),
-    ...to_row([0,13], 2),
-    ...to_row([0,13], 3),
-    ...to_row([0,13], 4),
-    ...to_row([0,13], 5),
-    ...to_row([0,13], 6),
-    ...to_row([0,13], 7)
+    ...to_col([0,1,2,3,4,5,6,7], 0),
+    ...to_col([0,1,2,3,4,5,6,7], 13)
   ]
 ]
 };
