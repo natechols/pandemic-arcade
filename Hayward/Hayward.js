@@ -6,7 +6,7 @@
 // line with the original game, where compound scores were possible as bricks
 // kept falling
 
-function make_board () {
+function make_board (startLevel) {
 
 let idx = 0;
 const N_COLS = 10;
@@ -78,6 +78,31 @@ function get_pos_screen(pos) {
                   BUFFER + (pos.y * BLOCK_SIZE));
 };
 
+// TODO fully implement the guidelines
+// https://tetris.wiki/Scoring#Recent_guideline_compatible_games
+function get_score(nRows, level) {
+  const multipliers = [0, 100, 300, 500, 800];
+  return multipliers[nRows] * (level + 1);
+};
+
+// https://tetris.wiki/Tetris_(NES,_Nintendo)#Details
+function get_drop_time(level) {
+  const timings = [800, 717, 633, 550, 467, 383, 300, 217, 133, 100, 83]; // ms
+  if (level >= 29) {
+    return 17;
+  } else if (level >= 19) {
+    return 34;
+  } else if (level >= 16) {
+    return 50;
+  } else if (level >= 13) {
+    return 67;
+  } else if (level >= 10) {
+    return 83;
+  } else {
+    return timings[level];
+  }
+};
+
 function get_block(i, j) {
   return {
     "pos": make_pos(i, j),
@@ -144,12 +169,14 @@ function copy_brick(brick) {
   };
 };
 
+// FIXME this is not actually ideal behavior, classic implementations had
+// much more sophisticated approaches that avoided too much repetition
 function get_random_brick() {
   const brickId = Math.floor(Math.random() * BRICKS.length);
   return get_brick(brickId);
 };
 
-// FIXME this makes blocks drift to the right
+// FIXME this makes blocks drift to the right each full rotation
 function rotate_brick(brick) {
   const blocks = brick.blocks;
   const centX = Math.floor(sum(blocks.map((b) => b.pos.x)) / blocks.length);
@@ -405,7 +432,7 @@ function render(board, rowsToRemove) {
 
   function render_next_brick(brick) {
     ctx.save();
-    ctx.translate(-40, 50);
+    ctx.translate(-40, 80);
     ctx.scale(0.5, 0.5);
     render_brick(brick);
     ctx.restore();
@@ -438,8 +465,9 @@ function render(board, rowsToRemove) {
     ctx.fillStyle = "#a0ff40";
     ctx.font = "16pt Monaco";
     ctx.textBaseline = "hanging";
-    ctx.fillText(`Score: ${board.score}`, 10, 10);
-    ctx.fillText("Next:", 10, 64);
+    ctx.fillText(`Level: ${board.level}`, 10, 10);
+    ctx.fillText(`Score: ${board.score}`, 10, 40);
+    ctx.fillText("Next:", 10, 70);
     ctx.restore();
     if (board.nextBrick !== null) {
       render_next_brick(board.nextBrick);
@@ -537,6 +565,16 @@ function start_game(board) {
     return 0;
   };
 
+  function get_level(nLines) {
+    const baseAdv = 10 + ((startLevel === undefined) ? 0 : startLevel)*10;
+    if (nLines > baseAdv) {
+      return Math.ceil((nLines - baseAdv) / 10);
+    } else {
+      return 0;
+    }
+  };
+
+  let linesCleared = 0;
   let lastTime = Date.now();
   let tAnim = 0, tDrop = 0, tInput = 0;
   let rowsToRemove = null;
@@ -554,7 +592,7 @@ function start_game(board) {
       if (tAnim <= 0 && tDrop <= 0 && rowsToRemove === null) {
         if (can_move(board, DOWN)) {
           move_active_brick(board, DOWN);
-          tDrop = 1000;
+          tDrop = get_drop_time(board.level);
         } else {
           const solidRows = find_solid_rows(board);
           if (solidRows.length > 0) {
@@ -562,7 +600,7 @@ function start_game(board) {
             tAnim = 200;
           } else {
             add_new_brick(board);
-            tDrop = 500;
+            tDrop = get_drop_time(board.level);
           }
         }
       }
@@ -570,7 +608,9 @@ function start_game(board) {
       if (rowsToRemove !== null) {
         if (tAnim <= 0) {
           remove_rows(board, rowsToRemove);
-          board.score += rowsToRemove.size * rowsToRemove.size;
+          board.score += get_score(rowsToRemove.size, 0);
+          board.level = get_level(linesCleared);
+          linesCleared += rowsToRemove.size;
           drop_stacks(board, rowsToRemove);
           tDrop = 100;
           rowsToRemove = null;
@@ -592,6 +632,7 @@ const board = {
   "active": true,
   "paused": false,
   "statusMsg": null,
+  "level": (startLevel === undefined) ? 0 : startLevel,
   "score": 0,
   "maxScore": 0
 };
