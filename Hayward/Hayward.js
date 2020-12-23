@@ -142,7 +142,7 @@ function get_blocks(brickId, rotation) {
   for (let i = 0; i < base.length; i++) {
     for (let j = 0; j < base[i].length; j++) {
       if (base[i][j] == 1) {
-        blocks.push(get_block(i, j));
+        blocks.push(get_block(j, i));
       }
     }
   }
@@ -432,7 +432,7 @@ function render(board, rowsToRemove) {
 
   function render_next_brick(brick) {
     ctx.save();
-    ctx.translate(-40, 80);
+    ctx.translate(-40, 70);
     ctx.scale(0.5, 0.5);
     render_brick(brick);
     ctx.restore();
@@ -471,6 +471,13 @@ function render(board, rowsToRemove) {
     ctx.restore();
     if (board.nextBrick !== null) {
       render_next_brick(board.nextBrick);
+    }
+    if (board.paused === true) {
+      ctx.save();
+      ctx.font = "24pt Monaco";
+      ctx.fillStyle = "#ff0000";
+      ctx.fillText("*PAUSED*", 20, 200);
+      ctx.restore();
     }
   }
 
@@ -524,7 +531,6 @@ function start_game(board) {
     switch (evt.code) {
       case "KeyP":
         board.paused = board.paused ? false : true;
-        console.log("pause:", board.paused);
         break;
       case "Space":
         if (!board.active) {
@@ -597,7 +603,7 @@ function start_game(board) {
           const solidRows = find_solid_rows(board);
           if (solidRows.length > 0) {
             rowsToRemove = new Set(solidRows);
-            tAnim = 200;
+            tAnim = 100;
           } else {
             add_new_brick(board);
             tDrop = get_drop_time(board.level);
@@ -620,6 +626,8 @@ function start_game(board) {
       tInput = t_minus(tInput);
       tDrop = t_minus(tDrop);
       tAnim = t_minus(tAnim);
+    } else if (board.paused) {
+      render(board, null);
     }
     window.requestAnimationFrame(gameLoop);
   }
