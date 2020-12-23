@@ -160,14 +160,22 @@ function rotate_brick(brick) {
     brick.rotation += 1;
   }
   brick.blocks = get_blocks(brick.brickId, brick.rotation);
+  let minX = 0, maxX = 9;
   brick.blocks.forEach(function (block) {
     block.pos.x += centX;
     block.pos.y += centY;
+    minX = Math.min(minX, block.pos.x);
+    maxX = Math.max(maxX, block.pos.x);
   });
+  if (minX < 0) {
+    brick.blocks.forEach((b) => b.pos.x -= minX);
+  } else if (maxX > 9) {
+    brick.blocks.forEach((b) => b.pos.x -= (maxX - 9));
+  }
 };
 
 function is_visible_brick(brick) {
-  return brick.blocks.filter((b) => b.visible).length > 1;
+  return brick.blocks.filter((b) => b.visible).length > 0;
 };
 
 function make_board_mask(board) {
