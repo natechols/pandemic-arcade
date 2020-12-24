@@ -6,9 +6,10 @@
 // line with the original game, where compound scores were possible as bricks
 // kept falling
 
-function make_board (startLevel) {
+function make_board (startLevel, enableAnimation) {
 
 let idx = 0;
+const ANIM_FRAMES = 500; // this is just for color effects
 const N_COLS = 10;
 const N_ROWS = 20;
 const BUFFER = 20;
@@ -47,14 +48,15 @@ const BRICKS = [
     [0, 1, 0]
   ]
 ];
+// these are in HSL space to simplify animation
 const COLORS = [
-  "#d00060",
-  "#60d060",
-  "#d0d000",
-  "#d0a000",
-  "#d060d0",
-  "#a060ff",
-  "#6060d0"
+  [332, 1, 0.41],
+  [120, 0.54, 0.6],
+  [60, 1, 0.41],
+  [46, 1, 0.41],
+  [300, 0.54, 0.6],
+  [265, 1, 0.69],
+  [240, 0.54, 0.6]
 ];
 const LEFT = 0;
 const RIGHT = 1;
@@ -106,7 +108,9 @@ function get_drop_time(level) {
 function get_block(i, j) {
   return {
     "pos": make_pos(i, j),
-    "visible": true
+    "visible": true,
+    "frequency": 1 + Math.floor(Math.random()*3),
+    "offset": Math.floor(Math.random()*100)
   };
 };
 
@@ -403,15 +407,44 @@ function clear_board(board) {
   board.statusMsg = "";
 }
 
-function render(board, rowsToRemove) {
+function render(board, rowsToRemove, animFrame) {
   const canvas = document.querySelector("canvas");
   const ctx = canvas.getContext('2d');
 
-  function render_block(pos, color) {
+  function render_block(pos, color, animFreq, animStart) {
     const coords = get_pos_screen(pos);
     ctx.save();
     ctx.beginPath();
-    ctx.fillStyle = color;
+    if (animFreq !== undefined && enableAnimation === true) {
+      const xCenter = coords.x + BLOCK_SIZE/2;
+      const yCenter = coords.y + BLOCK_SIZE/2;
+      const grd = ctx.createRadialGradient(xCenter, yCenter, 1, xCenter, yCenter, 50);
+      const period = ANIM_FRAMES / animFreq;
+      const ratio = ((animFrame + animStart) % period) / period;
+      const cLevel = 20 + 60 * Math.sin(Math.PI * ratio);
+      const color1 = `hsl(${color[0]}, ${color[1]*100}%, ${cLevel}%)`; 
+      const color2 = `hsl(${color[0]}, ${color[1]*100}%, ${color[2]*100}%)`; 
+      grd.addColorStop(0, color1);
+      grd.addColorStop(1, color2);
+      ctx.fillStyle = grd;
+      ctx.strokeStyle = `hsl(0, 0%, ${cLevel}%)`; //'#a0ff60';
+    } else {
+      if (color.length === 3) {
+        ctx.fillStyle = `hsl(${color[0]}, ${color[1]*100}%, ${color[2]*100}%)`;
+      } else {
+        if (enableAnimation === true) {
+          if ((animFrame % 100) > 50) {
+            ctx.fillStyle = color;
+          } else {
+            ctx.fillStyle = "black";
+          }
+        } else {
+          ctx.fillStyle = color;
+        }
+      }
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeRect(coords.x, coords.y, BLOCK_SIZE, BLOCK_SIZE);
     ctx.fillRect(coords.x + BLOCK_BORDER,
                  coords.y + BLOCK_BORDER,
                  BLOCK_INNER_SIZE,
@@ -425,7 +458,7 @@ function render(board, rowsToRemove) {
     for (let i = 0; i < brick.blocks.length; i++) {
       const block = brick.blocks[i];
       if (block.visible) {
-        render_block(block.pos, color);
+        render_block(block.pos, color, block.frequency, block.offset);
       }
     }
   }
@@ -462,6 +495,17 @@ function render(board, rowsToRemove) {
     ctx.strokeStyle = "#ffffff";
     ctx.strokeRect(FIELD_X_START + 10, 10,
                    WIDTH_PIXELS - 20 - FIELD_X_START, HEIGHT_PIXELS - 20);
+    if (enableAnimation === true) {
+      const grd = ctx.createLinearGradient(1, 1, WIDTH_PIXELS - 1, HEIGHT_PIXELS - 1);
+      grd.addColorStop(0, '#00ffff');
+      const midpoint = Math.sin(Math.PI * animFrame / ANIM_FRAMES);
+      grd.addColorStop(midpoint, '#0000ff');
+      grd.addColorStop(1, '#00ffff');
+      ctx.strokeStyle = grd;
+    } else {
+      ctx.strokeStyle = "#0000ff";
+    }
+    ctx.strokeRect(1, 1, WIDTH_PIXELS - 1, HEIGHT_PIXELS - 1);
     ctx.fillStyle = "#a0ff40";
     ctx.font = "16pt Monaco";
     ctx.textBaseline = "hanging";
@@ -582,7 +626,7 @@ function start_game(board) {
 
   let linesCleared = 0;
   let lastTime = Date.now();
-  let tAnim = 0, tDrop = 0, tInput = 0;
+  let tAnim = 0, tDrop = 0, tInput = 0, animFrame = 0;
   let rowsToRemove = null;
   function gameLoop () {
     let t = Date.now();
@@ -610,7 +654,7 @@ function start_game(board) {
           }
         }
       }
-      render(board, rowsToRemove);
+      render(board, rowsToRemove, animFrame);
       if (rowsToRemove !== null) {
         if (tAnim <= 0) {
           remove_rows(board, rowsToRemove);
@@ -626,8 +670,9 @@ function start_game(board) {
       tInput = t_minus(tInput);
       tDrop = t_minus(tDrop);
       tAnim = t_minus(tAnim);
+      animFrame = (animFrame === ANIM_FRAMES - 1) ? 0 : animFrame + 1;
     } else if (board.paused) {
-      render(board, null);
+      render(board, null, animFrame);
     }
     window.requestAnimationFrame(gameLoop);
   }
