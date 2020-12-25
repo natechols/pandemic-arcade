@@ -11,6 +11,7 @@
 <style>
 canvas.game-board {
   background-image: url('../images/bg0.jpeg');
+  cursor: pointer;
 }
 canvas.tile-view {
   background: white;
@@ -152,6 +153,7 @@ const numImages = 36;
 for (let i = 1; i <= numImages; i++) {
   document.write(`<img src="tiles/tile${i}.jpg" width="0" height="0"/>`);
 }
+document.onselectstart = function(){ return false; }
 window.onload = function () {
   const width = window.innerWidth;
   const height = window.innerHeight;

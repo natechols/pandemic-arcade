@@ -7,6 +7,11 @@
 <title>Sequoia</title>
 <link rel="stylesheet" type="text/css" href="../main.css">
 <script src="Sequoia.js" language="JavaScript"></script>
+<style>
+canvas {
+  cursor: pointer;
+}
+</style>
 <script language="JavaScript">
 // set a random background for the board
 const idx = 1 + Math.floor(Math.random() * 4);
@@ -20,6 +25,7 @@ document.getElementsByTagName("head")[0].appendChild(css);
 <center>
 <canvas width="1600" height="1000">Game Board</canvas>
 <script language="JavaScript">
+document.onselectstart = function(){ return false; }
 window.onload = function () {
   const width = window.innerWidth;
   const height = window.innerHeight;
