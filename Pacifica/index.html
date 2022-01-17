@@ -3,7 +3,8 @@
 -->
 <html>
 <head>
-<title>Pacifica</title>
+<title>Pandemic Aracde - Pacifica</title>
+<meta name="keywords" content"Mahjong solitaire, JavaScript, game, Flickr"/>
 <link rel="stylesheet" type="text/css" href="../main.css"/>
 <link rel="stylesheet" type="text/css" href="Pacifica.css"/>
 
@@ -15,13 +16,23 @@
   // basic page setup
   const urlSearchParams = new URLSearchParams(window.location.search);
   const params = Object.fromEntries(urlSearchParams.entries());
-  const apiKey = params["apiKey"];
+  const apiKeyQuery = params["apiKey"];
+  function getApiKey() {
+    if (apiKeyQuery === undefined) {
+      // I would love to encrypt the API key with a password here but all
+      // of the StackOverflow answers scream DON'T DO IT, sorry mom
+      return prompt("Please enter a Flickr API key to enable photo search:");
+    } else {
+      return apiKeyQuery;
+    }
+  };
 </script>
-
 </head>
+
 <body>
 <center>
 <canvas class="game-board">Game Board</canvas>
+
 <p>
 <form id="game-controls">
 Layout: 
@@ -34,6 +45,7 @@ Layout:
 </select>
 <input type="submit" id="submit-button" value="New Board"/>
 </form>
+
 <form id="tile-controls">
 Tiles:
 <select id="select-tiles" width="120" style="width: 120px;">
@@ -42,15 +54,15 @@ Tiles:
   <option>Mahjong</option>
   <option>Nature Emoji</option>
   <option>Custom Emoji</option>
-<script language="JavaScript">
-  if (apiKey !== undefined) {
-    document.write("<option>Flickr Search</option>");
-  }
-</script>
+  <script language="JavaScript">
+    const suffix = (apiKeyQuery === undefined) ? " (requires API key)" : "";
+    document.write(`<option>Flickr Search${suffix}</option>`);
+  </script>
 </select>
 <input type="submit" id="edit-button" value="Custom Tiles..."/>
 </form>
 </p>
+
 <div class="modal" id="modal-dialog">
 <div id="tile-editor">
 <div class="xga">
@@ -90,14 +102,13 @@ function setup_game_screen() {
   const width = window.innerWidth;
   const height = window.innerHeight;
   const canvas = document.querySelector("canvas");
-  const canvasWidth = Math.min(width - 50, 1600);
-  const canvasHeight = Math.min(width / 1.6 - 80, 1000);
+  const canvasWidth = Math.min(width - 50, height * 1.6);
+  const canvasHeight = Math.min(width / 1.6 - 80, height - 50);
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const imageSize = canvasWidth / 16;
   console.log(imageSize);
   const renderer = new Renderer(imageSize);
-  const search_flickr = FlickrAPI(apiKey, imageSize);
   const layouts = get_layouts();
   const layoutSelect = document.getElementById("select-layout");
   const tileSelect = document.getElementById("select-tiles");
@@ -126,7 +137,8 @@ function setup_game_screen() {
     redrawFunc();
     if (images !== undefined) {
       images.forEach((img) => {
-        // this is sluggish but helps prevent worse visual artifacts
+        // this is clumsy and awkward to look at but it's the easiest way to
+        // force image loading in pure javascript (so far)
         img.onload = function () {
           redrawFunc();
         };
@@ -137,7 +149,9 @@ function setup_game_screen() {
 
   function onSelectTiles(evt) {
     if (tileSelect.selectedIndex === EXTERNAL) {
+      const apiKey = getApiKey();
       const searchText = prompt("Please enter a Flickr photo search term:");
+      const search_flickr = FlickrAPI(apiKey);
       return search_flickr(searchText, finishSelection);
     } else {
       return finishSelection();
@@ -204,7 +218,8 @@ function setup_game_screen() {
 
   make_editor_table(imageSize, renderer);
   onSelectLayout(null);
-}
+};
+// FIXME handle this the same as Flickr images
 // preload built-in images
 const numImages = 36;
 for (let i = 1; i <= numImages; i++) {
@@ -213,7 +228,7 @@ for (let i = 1; i <= numImages; i++) {
 document.onselectstart = function(){ return false; }
 window.onload = function () {
   setup_game_screen();
-}
+};
 </script>
 <p><font class="note">All source code and backgrounds are my original work, but I do not own the copyright to all of the tile images.</font></p>
 </center>

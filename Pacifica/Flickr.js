@@ -7,13 +7,15 @@
   *   desert flowers
   *   exotic fruit
   *   tropical island
+  *   sea anemone
+  *   english country cottage
   *   tropical flowers
   *   hummingbird
   *   heirloom tomato
   *   cactus
   */
 
-function FlickrAPI (apiKey, imageSize) {
+function FlickrAPI (apiKey) {
 
   // https://www.flickr.com/services/api/misc.urls.html
   function get_flickr_thumbnail_url(photo) {
