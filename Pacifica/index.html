@@ -6,8 +6,17 @@
 <title>Pacifica</title>
 <link rel="stylesheet" type="text/css" href="../main.css">
 <script src="Pacifica.js" language="JavaScript"></script>
+<script src="Flickr.js" language="JavaScript"></script>
 <script src="layouts.js" language="JavaScript"></script>
 <script src="tiles.js" language="JavaScript"></script>
+
+<script language="JavaScript">
+// basic page setup
+const urlSearchParams = new URLSearchParams(window.location.search);
+const params = Object.fromEntries(urlSearchParams.entries());
+const apiKey = params["apiKey"];
+</script>
+
 <style>
 canvas.game-board {
   background-image: url('../images/bg0.jpeg');
@@ -108,7 +117,11 @@ Tiles:
   <option>Mahjong</option>
   <option>Nature Emoji</option>
   <option>Custom Emoji</option>
-  <option>Flickr Search</option>
+<script language="JavaScript">
+if (apiKey !== undefined) {
+  document.write("<option>Flickr Search</option>");
+}
+</script>
 </select>
 <input type="submit" id="edit-button" value="Custom Tiles..."/>
 </form>
@@ -156,58 +169,14 @@ window.onload = function () {
 <div id="hidden-images"/>
 
 <script language="JavaScript">
-const urlSearchParams = new URLSearchParams(window.location.search);
-const params = Object.fromEntries(urlSearchParams.entries());
-const searchText = params["flickrSearch"];
-const apiKey = params["apiKey"];
+const search_flickr = FlickrAPI(apiKey);
 
-// preload images
+// preload built-in images
 const numImages = 36;
 for (let i = 1; i <= numImages; i++) {
   document.write(`<img src="tiles/tile${i}.jpg" width="0" height="0"/>`);
 }
 document.onselectstart = function(){ return false; }
-
-function get_flickr_thumbnail_url(photo) {
-  const server = photo.getAttribute("server");
-  const secret = photo.getAttribute("secret");
-  const imgId = photo.getAttribute("id");
-  // https://www.flickr.com/services/api/misc.urls.html
-  return `https://live.staticflickr.com/${server}/${imgId}_${secret}_s.jpg`;
-};
-
-// https://www.flickr.com/services/api/flickr.photos.search.html
-function search_flickr(onComplete) {
-  if (searchText !== undefined) {
-    const maxPerPage = 500; // API limit, default is 100
-    const base_url = "https://www.flickr.com/services/rest/?method=flickr.photos.search";
-    const url = `${base_url}&text=${searchText}&api_key=${apiKey}&sort=relevance&per_page=${maxPerPage}`;
-    const xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState == 4 && xhr.status == 200) {
-        const result = xhr.responseXML;
-        const photos = Array.from(result.getElementsByTagName("photo"));
-        const flickrUrls = photos.slice(0, 36).map((p) => {
-          return get_flickr_thumbnail_url(p);
-        });
-        const flickrImages = flickrUrls.map((imgUrl) => {
-          console.log(`loading image from ${imgUrl}`);
-          //const tileImg = new Image();
-          const tileImg = document.createElement("img");
-          tileImg.src = imgUrl;
-          tileImg.width = 64;
-          tileImg.height = 64;
-          //document.write(`<img src="${imgUrl}" width="0" height="0"/>`);
-          return tileImg;
-        });
-        onComplete(flickrImages);
-      }
-    };
-    xhr.open('get', url, true);
-    xhr.send();
-  }
-  return false;
-};
 
 function setup_game_screen() {
   const width = window.innerWidth;
@@ -246,18 +215,21 @@ function setup_game_screen() {
       renderer.set_external_images(images);
       renderer.select_tiles(tileSelect.selectedIndex);
       redrawFunc();
-      images.forEach((img) => {
-        // this is sluggish but helps prevent worse visual artifacts
-        img.onload = function () {
-          redrawFunc();
-        };
-      });
+      if (images !== undefined) {
+        images.forEach((img) => {
+          // this is sluggish but helps prevent worse visual artifacts
+          img.onload = function () {
+            redrawFunc();
+          };
+        });
+      }
       return false;
     };
     if (tileSelect.selectedIndex === EXTERNAL) {
-      return search_flickr(onComplete); 
+      const searchText = prompt("Please enter a Flickr photo search term:");
+      return search_flickr(searchText, onComplete);
     } else {
-      return onComplete(null);
+      return onComplete();
     }
   };
 

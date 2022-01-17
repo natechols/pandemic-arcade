@@ -199,7 +199,7 @@ function Renderer(tileSize) {
   };
 
   this.render_external_image = function (ctx, x, y, tileId) {
-    const tileImg = this.externalImages[tileId].cloneNode();
+    const tileImg = this.externalImages[tileId];
     ctx.save();
     ctx.drawImage(tileImg, x, y, tileSize - 2, tileSize - 2);
     ctx.restore();
