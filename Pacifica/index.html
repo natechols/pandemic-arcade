@@ -176,27 +176,6 @@ function get_flickr_thumbnail_url(photo) {
   return `https://live.staticflickr.com/${server}/${imgId}_${secret}_s.jpg`;
 };
 
-var imageObjects = [];
-
-function loadImages(images, onComplete) {
-
-    var loaded = 0;
-
-    function onLoad() {
-        loaded++;
-        if (loaded == images.length) {
-            onComplete();
-        }
-    }
-
-    for (var i = 0; i < images.length; i++) {
-        var img = new Image();
-        img.addEventListener("load", onLoad);
-        img.src = images[i];
-        imageObjects.push(img);
-    }
-}
-
 // https://www.flickr.com/services/api/flickr.photos.search.html
 function search_flickr(onComplete) {
   if (searchText !== undefined) {
@@ -264,10 +243,15 @@ function setup_game_screen() {
 
   function onSelectTiles(evt) {
     function onComplete(images) {
-      console.log(`setting images ${images}`);
       renderer.set_external_images(images);
       renderer.select_tiles(tileSelect.selectedIndex);
       redrawFunc();
+      images.forEach((img) => {
+        // this is sluggish but helps prevent worse visual artifacts
+        img.onload = function () {
+          redrawFunc();
+        };
+      });
       return false;
     };
     if (tileSelect.selectedIndex === EXTERNAL) {
