@@ -196,7 +196,7 @@ function is_selectable(tile, others) {
 
 function process_click(board, x, y) {
   let clicked = null;
-  // potentstart at the top layer
+  // start at the top layer
   const activeTiles = board.tiles.filter((t) => t.isActive);
   for (let i = activeTiles.length - 1; i >= 0; i--) {
     const tile = activeTiles[i];

@@ -3,7 +3,8 @@ const FLAGS = 1;
 const MAHJONG = 2;
 const EMOJI = 3;
 const CUSTOM = 4;
-const LABELS = ["California", "Flags", "Mahjong", "Emoji", "Custom"];
+const EXTERNAL = 5;
+const LABELS = ["California", "Flags", "Mahjong", "Emoji", "Custom", "Flickr Search"];
 
 const MAHJONG_CODES = [
   "1F000", // east wind
@@ -197,6 +198,13 @@ function Renderer(tileSize) {
     ctx.restore();
   };
 
+  this.render_external_image = function (ctx, x, y, tileId) {
+    const tileImg = this.externalImages[tileId].cloneNode();
+    ctx.save();
+    ctx.drawImage(tileImg, x, y, tileSize - 2, tileSize - 2);
+    ctx.restore();
+  };
+
   function to_char_code(codeBase) {
     function to_unicode(c) {
       if (c.startsWith("U+")) {
@@ -228,10 +236,18 @@ function Renderer(tileSize) {
       case CUSTOM:
         render_unicode(ctx, x, y, tileId, to_char_code(customTiles[tileId]), 0.67);
         break;
+      case EXTERNAL:
+        this.render_external_image(ctx, x, y, tileId);
+        break;
     }
   };
   this.set_tile = function (tileId, value) {
     TILE_CODES[this.tileSet][tileId] = value;
+  };
+
+  this.externalImages = [];
+  this.set_external_images = function(externalImages) {
+    this.externalImages = externalImages;
   };
 
   this.tileSet = 0;
