@@ -4,95 +4,20 @@
 <html>
 <head>
 <title>Pacifica</title>
-<link rel="stylesheet" type="text/css" href="../main.css">
+<link rel="stylesheet" type="text/css" href="../main.css"/>
+<link rel="stylesheet" type="text/css" href="Pacifica.css"/>
+
 <script src="Pacifica.js" language="JavaScript"></script>
 <script src="Flickr.js" language="JavaScript"></script>
 <script src="layouts.js" language="JavaScript"></script>
 <script src="tiles.js" language="JavaScript"></script>
-
 <script language="JavaScript">
-// basic page setup
-const urlSearchParams = new URLSearchParams(window.location.search);
-const params = Object.fromEntries(urlSearchParams.entries());
-const apiKey = params["apiKey"];
+  // basic page setup
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  const params = Object.fromEntries(urlSearchParams.entries());
+  const apiKey = params["apiKey"];
 </script>
 
-<style>
-canvas.game-board {
-  background-image: url('../images/bg0.jpeg');
-  cursor: pointer;
-}
-canvas.tile-view {
-  background: white;
-  padding: 4px;
-}
-table {
-  border: 0px;
-  border-color: #d0d0a0;
-  border-width: 0px;
-  border-spacing: 0px;
-}
-tr {
-  border: 0px;
-  border-color: #d0d0a0;
-  border-spacing: 1px;
-}
-td {
-  text-align: center;
-  padding: 8px;
-  border-spacing: 1px;
-  border: 0px;
-  background: black;
-}
-td.bg-table {
-  background: #80b030;
-  padding: 0px;
-  border: 0px;
-}
-table#tiles-table {
-  border-spacing: 1px;
-  border: 0px;
-  border-width: 0px;
-}
-br {
-  height: 8px;
-}
-input.code-input {
-  width: 72px;
-  text-align: center;
-  background: #000000;
-  color: #ffff00;
-  font: "11pt Monaco";
-  border-style: solid;
-  border-color: #80b030;
-  box-shadow: none;
-  border-width: 1px;
-}
-/* The Modal (background) */
-.modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1; /* Sit on top */
-  left: 0;
-  top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  overflow: auto; /* Enable scroll if needed */
-  background-color: rgb(0,0,0); /* Fallback color */
-  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-}
-div#tile-editor {
-  background-color: rgb(0,0,0);
-  display: inline-block;
-  padding: 4px;
-  top: 50;
-}
-div#hidden-images {
-  width: 0;
-  height: 0;
-  display: none;
-}
-</style>
 </head>
 <body>
 <center>
@@ -118,9 +43,9 @@ Tiles:
   <option>Nature Emoji</option>
   <option>Custom Emoji</option>
 <script language="JavaScript">
-if (apiKey !== undefined) {
-  document.write("<option>Flickr Search</option>");
-}
+  if (apiKey !== undefined) {
+    document.write("<option>Flickr Search</option>");
+  }
 </script>
 </select>
 <input type="submit" id="edit-button" value="Custom Tiles..."/>
@@ -149,14 +74,6 @@ is yet, although clearly at least Unicode 6.0 is supported.</p>
 <tr class="bg-table">
 <td class="bg-table">
 <table id="tiles-table">
-<script language="JavaScript">
-window.onload = function () {
-  const tileSize = 72
-  const renderer = new Renderer(tileSize);
-  make_table(tileSize, renderer);
-  load_tile_set(renderer, 3);
-};
-</script>
 </table>
 </td></tr></table>
 <p>
@@ -166,18 +83,9 @@ window.onload = function () {
 </form>
 </div>
 </div>
-<div id="hidden-images"/>
+<div id="hidden-images"></div>
 
 <script language="JavaScript">
-const search_flickr = FlickrAPI(apiKey);
-
-// preload built-in images
-const numImages = 36;
-for (let i = 1; i <= numImages; i++) {
-  document.write(`<img src="tiles/tile${i}.jpg" width="0" height="0"/>`);
-}
-document.onselectstart = function(){ return false; }
-
 function setup_game_screen() {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -187,7 +95,9 @@ function setup_game_screen() {
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const imageSize = canvasWidth / 16;
+  console.log(imageSize);
   const renderer = new Renderer(imageSize);
+  const search_flickr = FlickrAPI(apiKey, imageSize);
   const layouts = get_layouts();
   const layoutSelect = document.getElementById("select-layout");
   const tileSelect = document.getElementById("select-tiles");
@@ -210,26 +120,27 @@ function setup_game_screen() {
     return false;
   };
 
+  function finishSelection(images) {
+    renderer.set_external_images(images);
+    renderer.select_tiles(tileSelect.selectedIndex);
+    redrawFunc();
+    if (images !== undefined) {
+      images.forEach((img) => {
+        // this is sluggish but helps prevent worse visual artifacts
+        img.onload = function () {
+          redrawFunc();
+        };
+      });
+    }
+    return false;
+  };
+
   function onSelectTiles(evt) {
-    function onComplete(images) {
-      renderer.set_external_images(images);
-      renderer.select_tiles(tileSelect.selectedIndex);
-      redrawFunc();
-      if (images !== undefined) {
-        images.forEach((img) => {
-          // this is sluggish but helps prevent worse visual artifacts
-          img.onload = function () {
-            redrawFunc();
-          };
-        });
-      }
-      return false;
-    };
     if (tileSelect.selectedIndex === EXTERNAL) {
       const searchText = prompt("Please enter a Flickr photo search term:");
-      return search_flickr(searchText, onComplete);
+      return search_flickr(searchText, finishSelection);
     } else {
-      return onComplete();
+      return finishSelection();
     }
   };
 
@@ -294,6 +205,12 @@ function setup_game_screen() {
   make_editor_table(imageSize, renderer);
   onSelectLayout(null);
 }
+// preload built-in images
+const numImages = 36;
+for (let i = 1; i <= numImages; i++) {
+  document.write(`<img src="tiles/tile${i}.jpg" width="0" height="0"/>`);
+}
+document.onselectstart = function(){ return false; }
 window.onload = function () {
   setup_game_screen();
 }

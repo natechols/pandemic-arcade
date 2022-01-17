@@ -13,7 +13,7 @@
   *   cactus
   */
 
-function FlickrAPI (apiKey) {
+function FlickrAPI (apiKey, imageSize) {
 
   // https://www.flickr.com/services/api/misc.urls.html
   function get_flickr_thumbnail_url(photo) {
@@ -28,8 +28,6 @@ function FlickrAPI (apiKey) {
     //const tileImg = new Image();
     const tileImg = document.createElement("img");
     tileImg.src = imgUrl;
-    tileImg.width = 64;
-    tileImg.height = 64;
     return tileImg;
   };
 
