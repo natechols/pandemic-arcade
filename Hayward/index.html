@@ -3,13 +3,21 @@
 -->
 <html>
 <head>
-<title>Hayward</title>
+<title>Pandemic Arcade - Hayward</title>
+<meta name="keywords" content="Tetris, JavaScript, game"/>
 <link rel="stylesheet" type="text/css" href="../main.css">
+<style>
+canvas#game-board {
+  background-image: url('../images/bg6.jpeg');
+  background-size: 100%;
+  cursor: pointer;
+}
+</style>
 <script src="Hayward.js" language="JavaScript"></script>
 </head>
 <body>
 <center>
-<canvas width="800" height="1080">Game Board</canvas>
+<canvas width="1600" height="1200" id="game-board">Game Board</canvas>
 <script language="JavaScript">
 make_board(0, false);
 </script>

@@ -16,7 +16,9 @@ const BUFFER = 20;
 const BLOCK_SIZE = 50;
 const BLOCK_INNER_SIZE = 46;
 const BLOCK_BORDER = 2;
-const FIELD_X_START = 250;
+const FIELD_X_START = 550;
+const FIELD_Y_START = 80;
+const FIELD_WIDTH = N_COLS * BLOCK_SIZE + BUFFER * 2;
 const WIDTH_PIXELS = FIELD_X_START + BUFFER * 2 + N_COLS * BLOCK_SIZE;
 const HEIGHT_PIXELS = BUFFER * 2 + N_ROWS * BLOCK_SIZE;
 const BRICKS = [
@@ -77,7 +79,7 @@ function make_pos(i, j) {
 
 function get_pos_screen(pos) {
   return make_pos(FIELD_X_START + BUFFER + (pos.x * BLOCK_SIZE),
-                  BUFFER + (pos.y * BLOCK_SIZE));
+                  FIELD_Y_START + BUFFER + (pos.y * BLOCK_SIZE));
 };
 
 // TODO fully implement the guidelines
@@ -465,7 +467,7 @@ function render(board, rowsToRemove, animFrame) {
 
   function render_next_brick(brick) {
     ctx.save();
-    ctx.translate(-40, 70);
+    ctx.translate(140, 100);
     ctx.scale(0.5, 0.5);
     render_brick(brick);
     ctx.restore();
@@ -490,28 +492,22 @@ function render(board, rowsToRemove, animFrame) {
     ctx.save();
     ctx.beginPath();
     ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, WIDTH_PIXELS, HEIGHT_PIXELS);
+    ctx.fillRect(FIELD_X_START, FIELD_Y_START,
+                 FIELD_WIDTH, HEIGHT_PIXELS);
     ctx.stroke();
-    ctx.strokeStyle = "#ffffff";
-    ctx.strokeRect(FIELD_X_START + 10, 10,
-                   WIDTH_PIXELS - 20 - FIELD_X_START, HEIGHT_PIXELS - 20);
-    if (enableAnimation === true) {
-      const grd = ctx.createLinearGradient(1, 1, WIDTH_PIXELS - 1, HEIGHT_PIXELS - 1);
-      grd.addColorStop(0, '#00ffff');
-      const midpoint = Math.sin(Math.PI * animFrame / ANIM_FRAMES);
-      grd.addColorStop(midpoint, '#0000ff');
-      grd.addColorStop(1, '#00ffff');
-      ctx.strokeStyle = grd;
-    } else {
-      ctx.strokeStyle = "#0000ff";
-    }
-    ctx.strokeRect(1, 1, WIDTH_PIXELS - 1, HEIGHT_PIXELS - 1);
+    const panelStartX = FIELD_X_START - 205;
+    const panelStartY = FIELD_Y_START;
+    ctx.fillRect(panelStartX, FIELD_Y_START, 200, 180);
+    ctx.stroke();
+    //ctx.strokeStyle = "#ffffff";
+    //ctx.strokeRect(FIELD_X_START + 10, FIELD_Y_START,
+    //               FIELD_X_START + WIDTH_PIXELS - 20, HEIGHT_PIXELS - 20);
     ctx.fillStyle = "#a0ff40";
     ctx.font = "16pt Monaco";
     ctx.textBaseline = "hanging";
-    ctx.fillText(`Level: ${board.level}`, 10, 10);
-    ctx.fillText(`Score: ${board.score}`, 10, 40);
-    ctx.fillText("Next:", 10, 70);
+    ctx.fillText(`Level: ${board.level}`, panelStartX + 10, panelStartY + 10);
+    ctx.fillText(`Score: ${board.score}`, panelStartX + 10, panelStartY + 40);
+    ctx.fillText("Next:", panelStartX + 10, panelStartY + 70);
     ctx.restore();
     if (board.nextBrick !== null) {
       render_next_brick(board.nextBrick);
@@ -520,7 +516,7 @@ function render(board, rowsToRemove, animFrame) {
       ctx.save();
       ctx.font = "24pt Monaco";
       ctx.fillStyle = "#ff0000";
-      ctx.fillText("*PAUSED*", 20, 200);
+      ctx.fillText("*PAUSED*", panelStartX + 20, panelStartY + 160);
       ctx.restore();
     }
   }
