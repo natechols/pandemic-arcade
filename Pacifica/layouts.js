@@ -60,6 +60,7 @@ const TURTLE = {
 ]
 };
 
+// XXX I have never beaten this, I think it is unplayable with 36 tiles
 // https://www.youtube.com/watch?v=7ASKJIFVK2A
 const MOMBASA = {
   "name": "Mombasa",
