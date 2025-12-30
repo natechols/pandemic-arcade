@@ -1,0 +1,32 @@
+<!--
+  this code is in the public domain
+-->
+<html>
+<head>
+<title>Pandemic Arcade - Portola</title>
+<meta name="keywords" content="PacMan, JavaScript, game"/>
+<link rel="stylesheet" type="text/css" href="../main.css">
+<style>
+canvas#game-board {
+  cursor: pointer;
+}
+</style>
+<script src="Portola.js" language="JavaScript"></script>
+<script src="levels.js" language="JavaScript"></script>
+</head>
+<body>
+<center>
+<canvas width="800" height="600" id="game-board">Game Board</canvas>
+<script language="JavaScript">
+const width = window.innerWidth;
+const height = window.innerHeight;
+const canvas = document.querySelector("canvas");
+const canvasWidth = Math.min(width - 20, (height - 20) * 1.3333);
+const canvasHeight = Math.min((width - 20) / 1.3333, height - 20);
+canvas.width = canvasWidth;
+canvas.height = canvasHeight;
+run_game(get_levels(), canvasWidth, canvasHeight);
+</script>
+</center>
+</body>
+</html>

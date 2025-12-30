@@ -192,9 +192,12 @@ function Renderer(tileSize) {
     render_unicode(ctx, x, y, tileId, charString, 0.5, color);
   };
 
-  function render_image(ctx, x, y, tileId) {
+  function render_image(ctx, x, y, tileId, borderWidth) {
+    const imgOffset = borderWidth / 2;
     ctx.save();
-    ctx.drawImage(images[tileId], x, y, tileSize - 2, tileSize - 2);
+    ctx.drawImage(images[tileId], x, y,
+                  tileSize - imgOffset,
+                  tileSize - imgOffset);
     ctx.restore();
   };
 
@@ -219,10 +222,10 @@ function Renderer(tileSize) {
 
   // XXX I hate this hacky OOP stuff but it made it easier to share this
   // code with the editor and switch between tiles
-  this.render_tile = function(ctx, x, y, tileId) {
+  this.render_tile = function(ctx, x, y, tileId, borderWidth) {
     switch (this.tileSet) {
       case CALIFORNIA:
-        render_image(ctx, x, y, tileId);
+        render_image(ctx, x, y, tileId, borderWidth);
         break;
       case MAHJONG:
         render_mahjong(ctx, x, y, tileId);

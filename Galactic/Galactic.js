@@ -209,6 +209,8 @@ const VELOCITY_TIME_SCALE = 1 / 500;
 const CLOCKWISE = 1;
 const COUNTERCLOCKWISE = -1;
 
+const S_SCREAM = "http://upload.wikimedia.org/wikipedia/commons/d/d9/Wilhelm_Scream.ogg";
+
 function new_game() {
   return {
     "level": 0,
@@ -430,6 +432,7 @@ function transfer_momentum(fromObj, toObj) {
 
 function update(space, t) {
   const player = space.player
+  const was_destroyed = player.is_destroyed;
 
   function update_position(object) {
     if (object.velocity_abs != 0) {
@@ -667,6 +670,12 @@ function update(space, t) {
   if (space_cleared(space)) {
     space.lifetime -= t;
   }
+  return player.is_destroyed && !was_destroyed;
+};
+
+function play_sound(url) {
+  const sound = new Audio(url);
+  sound.play();
 };
 
 function set_background(level) {
@@ -674,7 +683,7 @@ function set_background(level) {
   canvas.style = `background-image: url('images/hubble${level}.jpg');`;
 };
 
-function start_game(renderer) {
+function start_game(renderer, enable_sound_effects) {
   const canvas = document.querySelector("canvas");
   const w = canvas.width;
   const h = canvas.height;
@@ -782,7 +791,10 @@ function start_game(renderer) {
     const dt = (now - lastTime); // millis
     if (!isPaused() && !isOver()) {
       handle_player_state();
-      update(game.current_space, dt);
+      const is_destruction = update(game.current_space, dt);
+      if (is_destruction === true && enable_sound_effects === true) {
+        play_sound(S_SCREAM);
+      }
       handle_game_state();
     }
     renderer(game, canvas);
