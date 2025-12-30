@@ -18,8 +18,12 @@ const ROWS = 14;
 const COLS = 8;
 const BOARD_BORDER_X = 0.5;
 const BOARD_BORDER_Y = 1;
+// line width for the border around the tile; this is a bit blocky but
+// provides good contrast
+const BORDER_WIDTH = 4;
+// this defines the thickness of the "tiles" in 3D
 const OFFSET_3D = tileSize / 10;
-const TILE_BORDER = "#000000";
+const TILE_BORDER = "#202030";
 const LAYER_BORDERS = ["#404040", "#606060", "#808080", "#b0b0b0", "#e0e0e0"];
 const SELECTED_HIGHLIGHT = 'rgba(0, 0, 0, 0.5)'
 const SELECTED_LAYER_HIGHLIGHT = "#000000";
@@ -44,9 +48,10 @@ function make_tile (coords, layer, tileId) {
     "y": to_screen_pos(coords[1], layer, BOARD_BORDER_Y),
     "layer": layer,
     "isActive": true,
-    "isSelected": false
+    "isSelected": false,
+    "layer": layer
   };
-}
+};
 
 // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 function fisher_yates_shuffle (arr) {
@@ -86,37 +91,47 @@ function make_tiles () {
   return tiles;
 };
 
+function draw_path(ctx, points) {
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  points.slice(1).forEach((xy) => {
+    ctx.lineTo(xy[0], xy[1]);
+  });
+  ctx.closePath();
+};
+
 function draw_tile_borders(ctx, tile) {
   ctx.save();
   ctx.strokeStyle = TILE_BORDER;
   const x = tile.x;
   const y = tile.y;
-  ctx.lineWidth = 4;
+  ctx.lineWidth = BORDER_WIDTH;
   ctx.beginPath();
   ctx.strokeRect(x, y, tileSize, tileSize);
-  // bottom and right tile sides in 3D
-  ctx.beginPath();
+  ctx.closePath();
   if (tile.isSelected) {
     ctx.fillStyle = SELECTED_LAYER_HIGHLIGHT;
   } else {
     ctx.fillStyle = LAYER_BORDERS[tile.layer];
   }
   ctx.lineWidth = 2;
-  ctx.moveTo(x, y + tileSize);
-  ctx.lineTo(x + OFFSET_3D, y + tileSize + OFFSET_3D);
-  ctx.lineTo(x + tileSize + OFFSET_3D, y + tileSize + OFFSET_3D);
-  ctx.lineTo(x + tileSize + OFFSET_3D, y + OFFSET_3D);
-  ctx.lineTo(x + tileSize, y);
-  ctx.lineTo(x + tileSize, y + tileSize);
-  ctx.lineTo(x, y + tileSize);
-  ctx.closePath();
+  // bottom and right tile sides in 3D
+  draw_path(ctx, [
+    [x, y + tileSize],
+    [x + OFFSET_3D, y + tileSize + OFFSET_3D],
+    [x + tileSize + OFFSET_3D, y + tileSize + OFFSET_3D],
+    [x + tileSize + OFFSET_3D, y + OFFSET_3D],
+    [x + tileSize, y],
+    [x + tileSize, y + tileSize],
+    [x, y + tileSize]
+  ]);
   ctx.fill();
   ctx.stroke();
   // lower right corner edge
-  ctx.beginPath();
-  ctx.moveTo(x + tileSize, y + tileSize);
-  ctx.lineTo(x + tileSize + OFFSET_3D, y + tileSize + OFFSET_3D);
-  ctx.closePath();
+  draw_path(ctx, [
+    [x + tileSize, y + tileSize],
+    [x + tileSize + OFFSET_3D, y + tileSize + OFFSET_3D]
+  ]);
   ctx.stroke();
   ctx.restore();
 };
@@ -125,7 +140,7 @@ function draw_tile (ctx, tile) {
   draw_tile_borders(ctx, tile);
   const x = tile.x;
   const y = tile.y;
-  renderer.render_tile(ctx, x, y, tile.tileId);
+  renderer.render_tile(ctx, x, y, tile.tileId, BORDER_WIDTH);
   // selection highlight
   if (tile.isSelected) {
     ctx.save();
@@ -151,6 +166,7 @@ function draw_board (board) {
   }
   ctx.stroke();
   ctx.restore();
+  ctx.lineJoin = "bevel";
   board.tiles.forEach(function (tile) {
     if (tile.isActive) {
       draw_tile(ctx, tile); //board.images);
