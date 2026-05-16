@@ -7,6 +7,13 @@ canvas.tile-view {
   background: white;
   padding: 4px;
 }
+/*canvas.tile-status {
+  background: black;
+  width: 100%;
+  padding: 4px;
+  border: 1px;
+  border-color: #d0d0a0;
+}*/
 table {
   border: 0px;
   border-color: #d0d0a0;
@@ -62,6 +69,12 @@ input.code-input {
   background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
 }
 div#tile-editor {
+  background-color: rgb(0,0,0);
+  display: inline-block;
+  padding: 4px;
+  top: 50;
+}
+div#tile-status {
   background-color: rgb(0,0,0);
   display: inline-block;
   padding: 4px;

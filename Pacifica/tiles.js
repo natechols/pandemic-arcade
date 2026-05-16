@@ -141,6 +141,7 @@ const EMOJI_CODES = [
 ];
 
 function Renderer(tileSize) {
+  this.tile_size = tileSize;
   const images = [];
   for (let i = 1; i <= 36; i++) {
     const tileImg = new Image();
@@ -336,5 +337,39 @@ function load_tile_set(renderer) {
     render_custom_tile(canvas, i, renderer);
     const inp = document.getElementById(`code-${i+1}`);
     inp.value = renderer.get_code(i);
+  }
+};
+
+function render_tile_status(renderer, removedTiles) {
+  let removedTilesById = [];
+  for (let i = 0; i < 36; i++) {
+    removedTilesById.push(0);
+  }
+  removedTiles.forEach((tile) => {
+    console.log(tile);
+    removedTilesById[tile.tileId]++;
+  });
+  const canvas = document.getElementById("tile-status-canvas");
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 9; j++) {
+      const x = j * renderer.tile_size;
+      const y = i * renderer.tile_size;
+      const tileId = (i * 9) + j;
+      if (removedTilesById[tileId] && removedTilesById[tileId] == 4) {
+	console.log(`4 tiles removed: ${tileId} ${x} ${y}`);
+        renderer.render_tile(ctx, x, y, tileId, 1);
+      } else if (removedTilesById[tileId] && removedTilesById[tileId] == 2) {
+	console.log(`2 tiles removed: ${tileId} ${x} ${y}`);
+        renderer.render_tile(ctx, x, y, tileId, 1);
+    	ctx.save();
+        ctx.globalAlpha = 0.5; 
+    	ctx.fillStyle = "#a0a0a0";
+    	ctx.fillRect(x, y, renderer.tile_size, renderer.tile_size);
+        ctx.globalAlpha = 1.0; 
+    	ctx.restore();
+      }
+    }
   }
 };
