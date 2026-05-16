@@ -11,7 +11,7 @@
 // which represent tile positions as unit (i,j) coordinates (these can be
 // fractional, but usually in increments of 0.5).  the outer dimension of
 // the array represents layers, starting from the bottom.
-function make_board (layout, tileSize, renderer) {
+function make_board (layout, tileSize, renderer, removedTiles) {
 const N_IMAGES = 36;
 let tileIdx = 0;
 const ROWS = 14;
@@ -245,6 +245,7 @@ function update_from_selection(board, cheatMode) {
       tile.isActive = false;
       board.score++;
     });
+    removedTiles.push(...selected)
     draw_board(board);
   } else if (selected.length === 1 && cheatMode === true) {
     const activeTiles = board.tiles.filter((t) => t.isActive);
