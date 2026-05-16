@@ -44,6 +44,7 @@ Layout:
   <option>Mombasa 2</option>
 </select>
 <input type="submit" id="submit-button" value="New Board"/>
+<input type="button" id="status-button" value="Tile Status"/>
 </form>
 
 <form id="tile-controls">
@@ -63,7 +64,21 @@ Tiles:
 </form>
 </p>
 
-<div class="modal" id="modal-dialog">
+<div class="modal" id="modal-dialog-status">
+<div id="tile-status">
+<div class="xga">
+<h4>Tile Status</h4>
+</div>
+<form id="status-controls">
+<canvas id="tile-status-canvas">Tile Status</canvas>
+<p>
+<input type="button" value="Close" id="close-button"/>
+</p>
+</form>
+</div>
+</div>
+
+<div class="modal" id="modal-dialog-editor">
 <div id="tile-editor">
 <div class="xga">
 <h4>Mahjong Tile Editor</h4>
@@ -112,11 +127,14 @@ function setup_game_screen() {
   const layouts = get_layouts();
   const layoutSelect = document.getElementById("select-layout");
   const tileSelect = document.getElementById("select-tiles");
-  const modal = document.getElementById("modal-dialog");
+  const editorModal = document.getElementById("modal-dialog-editor");
+  const statusModal = document.getElementById("modal-dialog-status");
+  const statusCanvas = document.getElementById("tile-status-canvas");
   const gameForm = document.getElementById('game-controls');
   const tileForm = document.getElementById("tile-controls");
   const editForm = document.getElementById("edit-controls");
   let redrawFunc = null;
+  let removedTiles = [];
 
   console.log("loading");
   function random_layout() {
@@ -127,7 +145,8 @@ function setup_game_screen() {
     if (evt !== null && evt.preventDefault !== undefined) evt.preventDefault();
     const idx = layoutSelect.selectedIndex;
     const layout = (idx === 0) ? random_layout() : layouts[idx - 1];
-    redrawFunc = make_board(layout.tiles, imageSize, renderer);
+    removedTiles = [];
+    redrawFunc = make_board(layout.tiles, imageSize, renderer, removedTiles);
     return false;
   };
 
@@ -159,7 +178,7 @@ function setup_game_screen() {
   };
 
   function onEdit(evt) {
-    modal.style.display = "block";
+    editorModal.style.display = "block";
     const customTiles = renderer.get_custom_tiles();
     renderer.select_tiles(CUSTOM);
     load_tile_set(renderer);
@@ -167,7 +186,7 @@ function setup_game_screen() {
   };
 
   function onEditClose(evt) {
-    modal.style.display = "none";
+    editorModal.style.display = "none";
     return false;
   };
 
@@ -180,6 +199,21 @@ function setup_game_screen() {
     renderer.apply_edits(newTiles);
     redrawFunc();
     return onEditClose(evt);
+  };
+
+  function onTileStatusDisplay(evt) {
+    const statusWidth = 9 * (imageSize + 1);
+    const statusHeight = 4 * (imageSize + 1);
+    statusCanvas.width = statusWidth;
+    statusCanvas.height = statusHeight;
+    statusModal.style.display = "block";
+    render_tile_status(renderer, removedTiles);
+    return false;
+  };
+
+  function onTileStatusClose(evt) {
+    statusModal.style.display = "none";
+    return false;
   };
 
   function onFormKey(evt) {
@@ -215,6 +249,9 @@ function setup_game_screen() {
     editForm.addEventListener("submit", onEditSave);
   }
   editForm.addEventListener("keypress", onFormKey);
+
+  document.getElementById("status-button").onclick = onTileStatusDisplay;
+  document.getElementById("close-button").onclick = onTileStatusClose;
 
   make_editor_table(imageSize, renderer);
   onSelectLayout(null);
